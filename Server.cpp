@@ -108,6 +108,7 @@ void Server::broadcastToChannel(Channel* channel, Client* sender, const std::str
     }
 }
 
+
 void Server::handleJoinCommand(Client* client, const std::string& channelName)
 {
     if (!client)

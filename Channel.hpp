@@ -23,6 +23,8 @@ public:
 	const std::string& getTopic() const;
 	const std::string& getKey() const;
 	const std::string& getCreationTime() const;
+	const std::vector<Client*>& getClients() const;
+	const std::vector<Client*>& getOperators() const;
 	int getClientCount() const;
 	bool isInviteOnly() const;
 	bool isTopicRestricted() const;

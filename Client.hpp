@@ -31,6 +31,16 @@ public:
 	void setOperator(bool operatorStatus);
 	void updateRegistrationStatus();
 
+	//input/output management
+	bool hasInput() const;
+	bool hasOutput() const;
+	void setInput(const std::string& data);
+	void appendOutput(const std::string& data);
+	void prependOutput(const std::string& data);
+	const std::string& getInput() const;
+	const std::string& getOutput() const;
+	void clearInput();
+
 private:
 	int fd;
 	std::string address;
