@@ -55,7 +55,7 @@ private:
     void processCommand(Client* client, const std::string& command);
     void handleJoinCommand(Client* client, const std::string& channelName);
     void handlePrivMsgCommand(Client* client, const std::string& target, const std::string& message);
-	Client* Server::findClientByNickname(const std::string& nickname);
+    Client* findClientByNickname(const std::string& nickname);
     
     int _port;
     std::string _password;
