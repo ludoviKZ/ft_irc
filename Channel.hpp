@@ -36,7 +36,7 @@ public:
 	void setName(const std::string& name);
 	void setTopic(const std::string& topic);
 	void setKey(const std::string& key);
-	void setUserLimit(int limit);
+	void setUserLimit(Client& client, int limit);
 	void setInviteOnly(bool enabled);
 	void setTopicRestricted(bool enabled);
 

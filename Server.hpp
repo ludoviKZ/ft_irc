@@ -52,6 +52,9 @@ private:
     void createServerSocket();
     void setupPollSet();
     void broadcastToChannel(Channel* channel, Client* sender, const std::string& message);
+    void processCommand(Client* client, const std::string& command);
+    void handleJoinCommand(Client* client, const std::string& channelName);
+    void handlePrivMsgCommand(Client* client, const std::string& target, const std::string& message);
     Client* findClientByNickname(const std::string& nickname);
     
     int _port;
