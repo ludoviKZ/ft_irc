@@ -24,12 +24,14 @@ public:
 	bool isOperator() const;
 
 	//setters
+	void setregistered(bool registered);
+	void setAuthenticated(bool authenticated);
 	void appendInput(const std::string& data);
 	void setNickname(const std::string nickname);
 	void setUsername(const std::string username);
 	void setAuthenticated(bool authenticated);
+	void setRegistered(bool registered);
 	void setOperator(bool operatorStatus);
-	void updateRegistrationStatus();
 
 	//input/output management
 	bool hasInput() const;
@@ -47,6 +49,7 @@ private:
 	std::string nickname;
 	std::string username;
 	bool authenticated;
+	bool registered;
 	bool operator_status;
 	std::string input;
 	std::string output;

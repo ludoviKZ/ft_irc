@@ -2,13 +2,13 @@
 
 Client::Client()
     : fd(-1), address(""), nickname(""), username(""), authenticated(false),
-      operator_status(false), input(""), output("")
+      registered(false), operator_status(false), input(""), output("")
 {
 }
 
 Client::Client(int fileDescriptor, const std::string& address)
     : fd(fileDescriptor), address(address), nickname(""), username(""),
-      authenticated(false), operator_status(false), input(""), output("")
+      authenticated(false), registered(false), operator_status(false), input(""), output("")
 {
 }
 
@@ -19,7 +19,8 @@ Client::~Client()
 Client::Client(const Client& other)
     : fd(other.fd), address(other.address), nickname(other.nickname),
       username(other.username), authenticated(other.authenticated),
-      operator_status(other.operator_status), input(other.input), output(other.output)
+      registered(other.registered), operator_status(other.operator_status),
+      input(other.input), output(other.output)
 {
 }
 
@@ -32,6 +33,7 @@ Client& Client::operator=(const Client& other)
         nickname = other.nickname;
         username = other.username;
         authenticated = other.authenticated;
+        registered = other.registered;
         operator_status = other.operator_status;
         input = other.input;
         output = other.output;
@@ -61,7 +63,7 @@ const std::string Client::getUsername() const
 
 bool Client::isRegistered() const
 {
-    return !nickname.empty() && !username.empty();
+    return registered;
 }
 
 bool Client::isAuthenticated() const
@@ -79,6 +81,16 @@ void Client::appendInput(const std::string& data)
     input += data;
 }
 
+void Client::setregistered(bool registered)
+{
+	this->registered = registered;
+}
+
+void Client::setAuthenticated(bool authenticated)
+{
+	this->authenticated = authenticated;
+}
+
 void Client::setNickname(const std::string nickname)
 {
     this->nickname = nickname;
@@ -94,18 +106,16 @@ void Client::setAuthenticated(bool authenticated)
     this->authenticated = authenticated;
 }
 
+void Client::setRegistered(bool registered)
+{
+    this->registered = registered;
+}
+
 void Client::setOperator(bool operatorStatus)
 {
     this->operator_status = operatorStatus;
 }
 
-void Client::updateRegistrationStatus()
-{
-    if (!nickname.empty() && !username.empty())
-        authenticated = true;
-    else
-        authenticated = false;
-}
 
 bool Client::hasInput() const
 {

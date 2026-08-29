@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -37,12 +36,60 @@ static std::string trimTrailingCRLF(const std::string& input)
 static std::vector<std::string> splitCommandLine(const std::string& input)
 {
     std::vector<std::string> tokens;
-    std::istringstream stream(input);
-    std::string token;
+    std::size_t pos = 0;
+    while (pos < input.length())
+    {
+        while (pos < input.length() && input[pos] == ' ')
+            ++pos;
+        if (pos >= input.length())
+            break;
 
-    while (stream >> token)
-        tokens.push_back(token);
+        if (input[pos] == ':')
+        {
+            tokens.push_back(input.substr(pos + 1));
+            break;
+        }
+
+        std::size_t end = input.find(' ', pos);
+        if (end == std::string::npos)
+        {
+            tokens.push_back(input.substr(pos));
+            break;
+        }
+        tokens.push_back(input.substr(pos, end - pos));
+        pos = end + 1;
+    }
     return tokens;
+}
+
+static std::string clientNameOrStar(const Client& client)
+{
+    if (client.getNickname().empty())
+        return "*";
+    return client.getNickname();
+}
+
+static bool isRegistrationReady(const Client& client)
+{
+    return !client.getNickname().empty() && !client.getUsername().empty();
+}
+
+static bool isPasswordAccepted(const Server& server, const Client& client)
+{
+    return server.getPassword().empty() || client.isAuthenticated();
+}
+
+static void maybeCompleteRegistration(Server& server, Client& client)
+{
+    if (client.isRegistered() || !isRegistrationReady(client) || !isPasswordAccepted(server, client))
+        return;
+
+    sendReply(client, ":localhost 001 " + client.getNickname() + " :Welcome to the IRC server, " + client.getNickname() + "!" + client.getUsername() + "@localhost\r\n");
+    sendReply(client, ":localhost 002 " + client.getNickname() + " :Your host is localhost, running version ft_irc\r\n");
+    sendReply(client, ":localhost 003 " + client.getNickname() + " :This server was created today\r\n");
+    sendReply(client, ":localhost 004 " + client.getNickname() + " localhost ft_irc o o\r\n");
+    sendReply(client, ":localhost 422 " + client.getNickname() + " :MOTD File is missing\r\n");
+    client.setRegistered(true);
 }
 
 static std::string joinParameters(const std::vector<std::string>& parameters, std::size_t start)
@@ -111,7 +158,6 @@ static void handlePart(Server& server, Client& client, const std::vector<std::st
 
 static void handleNick(Server& server, Client& client, const std::vector<std::string>& parameters)
 {
-    (void)server;
     if (parameters.empty())
     {
         sendReply(client, ":localhost 431 :No nickname given\r\n");
@@ -125,23 +171,77 @@ static void handleNick(Server& server, Client& client, const std::vector<std::st
         return;
     }
 
+    Client* existing = findClientByNickname(server, newNick);
+    if (existing != NULL && existing->getFd() != client.getFd())
+    {
+        sendReply(client, ":localhost 433 " + clientNameOrStar(client) + " " + newNick + " :Nickname is already in use\r\n");
+        return;
+    }
+
+    std::string oldNick = client.getNickname();
     client.setNickname(newNick);
-    client.updateRegistrationStatus();
-    sendReply(client, ":" + client.getNickname() + " NICK " + newNick + "\r\n");
+    if (!oldNick.empty())
+        sendReply(client, ":" + oldNick + " NICK :" + newNick + "\r\n");
+    maybeCompleteRegistration(server, client);
 }
 
 static void handleUser(Server& server, Client& client, const std::vector<std::string>& parameters)
 {
-    (void)server;
+    if (client.isRegistered())
+    {
+        sendReply(client, ":localhost 462 " + client.getNickname() + " :You may not reregister\r\n");
+        return;
+    }
+
     if (parameters.size() < 4)
     {
-        sendReply(client, ":localhost 461 " + client.getNickname() + " USER :Not enough parameters\r\n");
+        sendReply(client, ":localhost 461 " + clientNameOrStar(client) + " USER :Not enough parameters\r\n");
         return;
     }
 
     client.setUsername(parameters[0]);
-    client.updateRegistrationStatus();
-    sendReply(client, ":localhost 001 " + client.getNickname() + " :Welcome to the IRC server, " + client.getNickname() + "!" + client.getUsername() + "@localhost\r\n");
+    maybeCompleteRegistration(server, client);
+}
+
+static void handlePass(Server& server, Client& client, const std::vector<std::string>& parameters)
+{
+    if (client.isRegistered())
+    {
+        sendReply(client, ":localhost 462 " + client.getNickname() + " :You may not reregister\r\n");
+        return;
+    }
+
+    if (parameters.empty())
+    {
+        sendReply(client, ":localhost 461 " + clientNameOrStar(client) + " PASS :Not enough parameters\r\n");
+        return;
+    }
+
+    if (server.getPassword() != parameters[0])
+    {
+        sendReply(client, ":localhost 464 " + clientNameOrStar(client) + " :Password incorrect\r\n");
+        return;
+    }
+
+    client.setAuthenticated(true);
+    maybeCompleteRegistration(server, client);
+}
+
+static void handleCap(Server& server, Client& client, const std::vector<std::string>& parameters)
+{
+    (void)server;
+    if (parameters.empty())
+    {
+        sendReply(client, ":localhost CAP " + clientNameOrStar(client) + " LS :\r\n");
+        return;
+    }
+
+    std::string subCommand = parameters[0];
+    std::transform(subCommand.begin(), subCommand.end(), subCommand.begin(), (int (*)(int))std::toupper);
+    if (subCommand == "LS" || subCommand == "LIST")
+        sendReply(client, ":localhost CAP " + clientNameOrStar(client) + " " + subCommand + " :\r\n");
+    else if (subCommand == "REQ")
+        sendReply(client, ":localhost CAP " + clientNameOrStar(client) + " NAK :" + (parameters.size() > 1 ? parameters[1] : "") + "\r\n");
 }
 
 static void handlePrivmsg(Server& server, Client& client, const std::vector<std::string>& parameters)
@@ -154,6 +254,11 @@ static void handlePrivmsg(Server& server, Client& client, const std::vector<std:
 
     std::string target = parameters[0];
     std::string message = joinParameters(parameters, 1);
+    if (message.empty())
+    {
+        sendReply(client, ":localhost 412 " + clientNameOrStar(client) + " :No text to send\r\n");
+        return;
+    }
 
     std::string fullMessage = ":" + client.getNickname() + "!" + client.getUsername() + "@localhost PRIVMSG " + target + " :" + message + "\r\n";
 
@@ -189,7 +294,7 @@ static void handlePing(Server& server, Client& client, const std::vector<std::st
         return;
     }
 
-    sendReply(client, ":localhost PONG " + parameters[0] + "\r\n");
+    sendReply(client, "PONG :" + parameters[0] + "\r\n");
 }
 
 static void handleQuit(Server& server, Client& client, const std::vector<std::string>& parameters)
@@ -248,10 +353,18 @@ void executeCommand(Server& server, Client& client, const std::string& rawComman
     for (std::size_t i = 1; i < tokens.size(); ++i)
         parameters.push_back(tokens[i]);
 
-    if (name == "NICK")
+    if (name == "CAP")
+        handleCap(server, client, parameters);
+    else if (name == "PASS")
+        handlePass(server, client, parameters);
+    else if (name == "NICK")
         handleNick(server, client, parameters);
     else if (name == "USER")
         handleUser(server, client, parameters);
+    else if (name == "PONG")
+        return;
+    else if (!client.isRegistered())
+        sendReply(client, ":localhost 451 " + clientNameOrStar(client) + " :You have not registered\r\n");
     else if (name == "JOIN")
         handleJoin(server, client, parameters);
     else if (name == "PART")
