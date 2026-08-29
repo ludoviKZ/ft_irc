@@ -6,8 +6,9 @@
 #include <cctype>
 #include <string>
 #include <vector>
+#include <sys/socket.h>
 
-static void sendReply(Client& client, const std::string& message)
+void sendReply(Client& client, const std::string& message)
 {
     if (client.getFd() < 0)
         return;

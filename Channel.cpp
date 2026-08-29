@@ -1,6 +1,7 @@
 #include "Channel.hpp"
-#include "commands.hpp"
+#include "commands/commands.hpp"
 #include <ctime>
+#include <sys/socket.h>
 #include <cstring>
 
 Channel::Channel() : _userLimit(0), _inviteOnly(false), _topicRestricted(false)
@@ -71,7 +72,7 @@ void Channel::setUserLimit(Client& client, int limit)
 	if (limit >= getClientCount())
 		_userLimit = limit;
 	else
-		sendReply(client, "Cannot set. Users are already too many for this user limit.");
+        sendReply(client, ":localhost 471 " + client.getNickname() + " " + _name + " :Cannot set user limit below current user count\r\n");
 }
 void Channel::setInviteOnly(bool enabled) { _inviteOnly = enabled; }
 void Channel::setTopicRestricted(bool enabled) { _topicRestricted = enabled; }

@@ -20,6 +20,8 @@ $(TARGET): $(OBJS)
 
 clean:
 	rm -f $(OBJS) $(TARGET)
+fclean: clean
+	rm -f $(TARGET)
 
 re: clean all
 

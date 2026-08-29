@@ -86,11 +86,6 @@ void Client::setregistered(bool registered)
 	this->registered = registered;
 }
 
-void Client::setAuthenticated(bool authenticated)
-{
-	this->authenticated = authenticated;
-}
-
 void Client::setNickname(const std::string nickname)
 {
     this->nickname = nickname;
@@ -116,6 +111,10 @@ void Client::setOperator(bool operatorStatus)
     this->operator_status = operatorStatus;
 }
 
+void Client::updateRegistrationStatus()
+{
+    registered = !nickname.empty() && !username.empty();
+}
 
 bool Client::hasInput() const
 {
