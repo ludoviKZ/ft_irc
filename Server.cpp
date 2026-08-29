@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include "commands/commands.hpp"
 #include <sys/socket.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -108,145 +109,6 @@ void Server::broadcastToChannel(Channel* channel, Client* sender, const std::str
     }
 }
 
-
-void Server::handleJoinCommand(Client* client, const std::string& channelName)
-{
-    if (!client)
-        return;
-    
-    // Cerca il channel
-    Channel* channel = findChannel(channelName);
-    
-    if (!channel)
-    {
-        // Crea un nuovo channel
-        Channel newChannel(channelName);
-        _channels.push_back(newChannel);
-        channel = &_channels[_channels.size() - 1];
-    }
-    
-    // Aggiungi il client al channel
-    channel->addClient(*client);
-    
-    // Invia conferma al client
-    std::string confirm = ":" + client->getNickname() + "!" + client->getUsername() + 
-                          "@localhost JOIN " + channelName + "\r\n";
-    send(client->getFd(), confirm.c_str(), confirm.length(), 0);
-    
-    // Invia il topic se presente
-    if (!channel->getTopic().empty())
-    {
-        std::string topicMsg = ":localhost 332 " + client->getNickname() + 
-                               " " + channelName + " :" + channel->getTopic() + "\r\n";
-        send(client->getFd(), topicMsg.c_str(), topicMsg.length(), 0);
-    }
-}
-
-void Server::handlePrivMsgCommand(Client* client, const std::string& target, const std::string& message)
-{
-    if (!client)
-        return;
-    
-    // Costruisci il messaggio da inviare
-    std::string msg = ":" + client->getNickname() + "!" + client->getUsername() + 
-                      "@localhost PRIVMSG " + target + " :" + message + "\r\n";
-    
-    // Cerca se è un channel o un utente
-    Channel* channel = findChannel(target);
-    if (channel)
-    {
-        // È un channel - invia a tutti i membri del channel
-        const std::vector<Client*>& members = channel->getClients();
-        for (std::vector<Client*>::const_iterator it = members.begin();
-             it != members.end(); ++it)
-        {
-            Client* member = *it;
-            if (member && member->getFd() != client->getFd())
-            {
-                send(member->getFd(), msg.c_str(), msg.length(), 0);
-            }
-        }
-    }
-    else
-    {
-        // È un utente specifico
-        Client* targetClient = findClientByNickname(target);
-        if (targetClient)
-        {
-            send(targetClient->getFd(), msg.c_str(), msg.length(), 0);
-        }
-        else
-        {
-            // Utente non trovato
-            std::string error = ":localhost 401 " + client->getNickname() + 
-                               " " + target + " :No such nick/channel\r\n";
-            send(client->getFd(), error.c_str(), error.length(), 0);
-        }
-    }
-}
-
-void Server::processCommand(Client* client, const std::string& command)
-{
-    if (!client)
-        return;
-    
-    // Parser semplice dei comandi IRC
-    std::string cmd = command;
-    size_t pos = cmd.find("\r\n");
-    if (pos != std::string::npos)
-        cmd = cmd.substr(0, pos);
-    
-    // Tokenizza il comando
-    std::vector<std::string> tokens;
-    std::string token;
-    std::stringstream ss(cmd);
-    while (ss >> token)
-        tokens.push_back(token);
-    
-    if (tokens.empty())
-        return;
-    
-    // Comando NICK
-    if (tokens[0] == "NICK" && tokens.size() >= 2)
-    {
-        client->setNickname(tokens[1]);
-        client->updateRegistrationStatus();
-        
-        std::string msg = ":" + client->getNickname() + " NICK " + tokens[1] + "\r\n";
-        // Broadcast del cambio nickname a tutti i client
-        for (std::vector<Client>::iterator it = _clients.begin();
-             it != _clients.end(); ++it)
-        {
-            if (it->getFd() != client->getFd())
-                send(it->getFd(), msg.c_str(), msg.length(), 0);
-        }
-    }
-    // Comando USER
-    else if (tokens[0] == "USER" && tokens.size() >= 4)
-    {
-        client->setUsername(tokens[1]);
-        client->updateRegistrationStatus();
-    }
-    // Comando JOIN
-    else if (tokens[0] == "JOIN" && tokens.size() >= 2)
-    {
-        handleJoinCommand(client, tokens[1]);
-    }
-    // Comando PRIVMSG
-    else if (tokens[0] == "PRIVMSG" && tokens.size() >= 3)
-    {
-        // Trova il messaggio (potrebbe contenere spazi)
-        size_t start = cmd.find(tokens[1]) + tokens[1].length();
-        while (cmd[start] == ' ')
-            start++;
-        if (cmd[start] == ':')
-            start++;
-        std::string msg = cmd.substr(start);
-        
-        handlePrivMsgCommand(client, tokens[1], msg);
-    }
-}
-
 void Server::readFromClient(Client& client)
 {
     int cs = client.getFd();
@@ -277,7 +139,7 @@ void Server::readFromClient(Client& client)
         while ((pos = input.find("\r\n")) != std::string::npos)
         {
             std::string command = input.substr(0, pos + 2);
-            processCommand(&client, command);
+            executeCommand(*this, client, command);
             input.erase(0, pos + 2);
         }
         client.setInput(input);
