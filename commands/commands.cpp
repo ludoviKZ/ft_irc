@@ -311,12 +311,98 @@ static void handleQuit(Server& server, Client& client, const std::vector<std::st
 static void handleMode(Server& server, Client& client, const std::vector<std::string>& parameters)
 {
     (void)server;
-    if (parameters.empty())
+	if (!client.isOperator())
+    {
+        sendReply(client, ":localhost 461 " + client.getNickname() + " MODE :Only operators can use MODE command\r\n");
+        return;
+    }
+    if (parameters.size() < 2)
     {
         sendReply(client, ":localhost 461 " + client.getNickname() + " MODE :Not enough parameters\r\n");
         return;
     }
-
+	Client *targetClient;
+	Channel *channel = server.findChannel(parameters[0]);
+	if (parameters[1] == "+i")
+		channel->setInviteOnly(true);
+	else if (parameters[1] == "-i")
+		channel->setInviteOnly(false);
+	else if (parameters[1] == "+t")
+		channel->setTopicRestricted(true);
+	else if (parameters[1] == "-t")
+		channel->setTopicRestricted(false);
+	else if (parameters[1] == "+k")
+	{
+		if (parameters.size() < 3)
+		{
+       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE +k :Password parameter required\r\n");
+        	return;
+    	}
+		channel->setKey(parameters[2]);
+	}
+	else if (parameters[1] == "-k")
+	{
+		if (parameters.size() < 3)
+		{
+       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE -k :Password parameter required\r\n");
+        	return;
+    	}
+		if (channel->getKey() == parameters[2])
+			channel->setKey("");
+	}
+	else if (parameters[1] == "+k")
+	{
+		if (parameters.size() < 3)
+		{
+       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE -k :Password parameter required\r\n");
+        	return;
+    	}
+		if (channel->getKey() == parameters[2])
+			channel->setKey("");
+	}
+	else if (parameters[1] == "+o")
+	{
+		if (parameters.size() < 3)
+		{
+       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE +o :User parameter required\r\n");
+        	return;
+    	}
+		targetClient = findClientByNickname(server, parameters[2]);
+		if (!targetClient)
+		{
+       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE +o :No user with this Nick\r\n");
+        	return;
+    	}
+		targetClient->setOperator(true);
+	}
+	else if (parameters[1] == "-o")
+	{
+		if (parameters.size() < 3)
+		{
+       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE -o :User parameter required\r\n");
+        	return;
+    	}
+		targetClient = findClientByNickname(server, parameters[2]);
+		if (!targetClient)
+		{
+       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE -o :No user with this Nick\r\n");
+        	return;
+    	}
+		targetClient->setOperator(false);
+	}
+	else if (parameters[1] == "+l")
+	{
+		if (parameters.size() < 3)
+		{
+       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE +l :User limit value parameter required\r\n");
+        	return;
+    	}
+		channel->setUserLimit(client, std::stoi(parameters[2]));
+	}
+	else if (parameters[1] == "-l")
+		channel->setUserLimit(client, 0);
+	else
+		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE :Invalid parameter\r\n");
     // Placeholder for channel/user mode handling.
     // server.handleModeCommand(&client, parameters);
     sendReply(client, ":localhost 324 " + client.getNickname() + " " + parameters[0] + " +\r\n");
