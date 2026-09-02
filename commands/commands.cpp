@@ -6,19 +6,26 @@
 #include <cctype>
 #include <string>
 #include <vector>
+#include <deque>
 #include <sys/socket.h>
+#include <cerrno>
+#include <cstdlib>
+#include <iostream>
 
 void sendReply(Client& client, const std::string& message)
 {
     if (client.getFd() < 0)
         return;
-    send(client.getFd(), message.c_str(), message.length(), 0);
+    std::cerr << "[IRC OUT fd=" << client.getFd() << "] "
+              << message.substr(0, message.length() - (message.length() >= 2 ? 2 : 0))
+              << std::endl;
+    client.appendOutput(message);
 }
 
 static Client* findClientByNickname(Server& server, const std::string& nickname)
 {
-    const std::vector<Client>& clients = server.getClients();
-    for (std::vector<Client>::const_iterator it = clients.begin(); it != clients.end(); ++it)
+    const std::deque<Client>& clients = server.getClients();
+    for (std::deque<Client>::const_iterator it = clients.begin(); it != clients.end(); ++it)
     {
         if (it->getNickname() == nickname)
             return const_cast<Client*>(&(*it));
@@ -126,6 +133,18 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
     {
         sendReply(client, ":localhost 473 " + client.getNickname() + " " + channelName + " :Cannot join channel (+i)\r\n");
         return;
+    }
+
+    if (channel->hasKey())
+    {
+        sendReply(client, ":localhost 475 " + client.getNickname() + " " + channelName + " :Cannot join channel (+k)\r\n");
+        return;
+    }
+    const std::vector<Client*>& members = channel->getClients();
+    for (std::vector<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
+    {
+        if (*it != NULL && (*it)->getFd() == client.getFd())
+            return;
     }
 
     channel->addClient(client);
@@ -243,6 +262,10 @@ static void handleCap(Server& server, Client& client, const std::vector<std::str
         sendReply(client, ":localhost CAP " + clientNameOrStar(client) + " " + subCommand + " :\r\n");
     else if (subCommand == "REQ")
         sendReply(client, ":localhost CAP " + clientNameOrStar(client) + " NAK :" + (parameters.size() > 1 ? parameters[1] : "") + "\r\n");
+    else if (subCommand == "END")
+        return;
+    else
+        sendReply(client, ":localhost CAP " + clientNameOrStar(client) + " NAK :" + subCommand + "\r\n");
 }
 
 static void handlePrivmsg(Server& server, Client& client, const std::vector<std::string>& parameters)
@@ -300,29 +323,45 @@ static void handlePing(Server& server, Client& client, const std::vector<std::st
 
 static void handleQuit(Server& server, Client& client, const std::vector<std::string>& parameters)
 {
+    (void)server;
     std::string reason = (parameters.empty()) ? "Client quit" : joinParameters(parameters, 0);
     sendReply(client, ":localhost ERROR :Closing Link: " + client.getNickname() + " (" + reason + ")\r\n");
 
-    // Placeholder: call the server-side client removal logic after the socket is closed.
-    // server.removeClient(client.getFd());
-    (void)server;
+    client.setClosing(true);
 }
 
 static void handleMode(Server& server, Client& client, const std::vector<std::string>& parameters)
 {
-    (void)server;
-	if (!client.isOperator())
+    if (parameters.empty())
     {
-        sendReply(client, ":localhost 461 " + client.getNickname() + " MODE :Only operators can use MODE command\r\n");
+        sendReply(client, ":localhost 461 " + clientNameOrStar(client) + " MODE :Not enough parameters\r\n");
         return;
     }
-    if (parameters.size() < 2)
+
+    Channel *channel = server.findChannel(parameters[0]);
+    if (parameters.size() == 1)
     {
-        sendReply(client, ":localhost 461 " + client.getNickname() + " MODE :Not enough parameters\r\n");
+        if (channel != NULL)
+            sendReply(client, ":localhost 324 " + client.getNickname() + " " + parameters[0] + " +\r\n");
+        else if (parameters[0] == client.getNickname())
+            sendReply(client, ":localhost 221 " + client.getNickname() + " +\r\n");
+        else
+            sendReply(client, ":localhost 501 " + client.getNickname() + " :Unknown MODE target\r\n");
         return;
     }
-	Client *targetClient;
-	Channel *channel = server.findChannel(parameters[0]);
+
+    if (!client.isOperator())
+    {
+        sendReply(client, ":localhost 482 " + client.getNickname() + " " + parameters[0] + " :You're not channel operator\r\n");
+        return;
+    }
+
+    Client *targetClient;
+    if (channel == NULL)
+    {
+        sendReply(client, ":localhost 403 " + client.getNickname() + " " + parameters[0] + " :No such channel\r\n");
+        return;
+    }
 	if (parameters[1] == "+i")
 		channel->setInviteOnly(true);
 	else if (parameters[1] == "-i")
@@ -397,14 +436,19 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
        		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE +l :User limit value parameter required\r\n");
         	return;
     	}
-		channel->setUserLimit(client, std::stoi(parameters[2]));
+        char *end = NULL;
+        long limit = std::strtol(parameters[2].c_str(), &end, 10);
+        if (end == parameters[2].c_str() || *end != '\0' || limit < 1)
+        {
+            sendReply(client, ":localhost 472 " + client.getNickname() + " " + parameters[2] + " :Invalid limit\r\n");
+            return;
+        }
+		channel->setUserLimit(client, static_cast<int>(limit));
 	}
 	else if (parameters[1] == "-l")
 		channel->setUserLimit(client, 0);
 	else
 		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE :Invalid parameter\r\n");
-    // Placeholder for channel/user mode handling.
-    // server.handleModeCommand(&client, parameters);
     sendReply(client, ":localhost 324 " + client.getNickname() + " " + parameters[0] + " +\r\n");
 }
 
@@ -423,6 +467,31 @@ static void handleWho(Server& server, Client& client, const std::vector<std::str
     sendReply(client, ":localhost 315 " + client.getNickname() + " " + parameters[0] + " :End of /WHO list\r\n");
 }
 
+static void handleUserhost(Server& server, Client& client, const std::vector<std::string>& parameters)
+{
+    if (parameters.empty())
+    {
+        sendReply(client, ":localhost 461 " + client.getNickname() + " USERHOST :Not enough parameters\r\n");
+        return;
+    }
+
+    std::string reply = ":localhost 302 " + client.getNickname() + " :";
+    for (std::size_t i = 0; i < parameters.size() && i < 5; ++i)
+    {
+        Client* target = findClientByNickname(server, parameters[i]);
+        if (target == NULL)
+            continue;
+        if (i > 0 && reply[reply.length() - 1] != ':')
+            reply += " ";
+        reply += target->getNickname();
+        if (target->isOperator())
+            reply += "*";
+        reply += "=+" + target->getUsername() + "@localhost";
+    }
+    reply += "\r\n";
+    sendReply(client, reply);
+}
+
 void executeCommand(Server& server, Client& client, const std::string& rawCommand)
 {
     std::string command = trimTrailingCRLF(rawCommand);
@@ -435,6 +504,15 @@ void executeCommand(Server& server, Client& client, const std::string& rawComman
 
     std::string name = tokens[0];
     std::transform(name.begin(), name.end(), name.begin(), (int (*)(int))std::toupper);
+    std::cerr << "[IRC IN fd=" << client.getFd() << "] " << name;
+    if (name != "PASS")
+    {
+        for (std::size_t i = 1; i < tokens.size(); ++i)
+            std::cerr << " " << tokens[i];
+    }
+    else
+        std::cerr << " <redacted>";
+    std::cerr << std::endl;
 
     std::vector<std::string> parameters;
     for (std::size_t i = 1; i < tokens.size(); ++i)
@@ -448,6 +526,8 @@ void executeCommand(Server& server, Client& client, const std::string& rawComman
         handleNick(server, client, parameters);
     else if (name == "USER")
         handleUser(server, client, parameters);
+    else if (name == "PING")
+        handlePing(server, client, parameters);
     else if (name == "PONG")
         return;
     else if (!client.isRegistered())
@@ -458,14 +538,14 @@ void executeCommand(Server& server, Client& client, const std::string& rawComman
         handlePart(server, client, parameters);
     else if (name == "PRIVMSG")
         handlePrivmsg(server, client, parameters);
-    else if (name == "PING")
-        handlePing(server, client, parameters);
     else if (name == "QUIT")
         handleQuit(server, client, parameters);
     else if (name == "MODE")
         handleMode(server, client, parameters);
     else if (name == "WHO")
         handleWho(server, client, parameters);
+    else if (name == "USERHOST")
+        handleUserhost(server, client, parameters);
     else
         sendReply(client, ":localhost 421 " + client.getNickname() + " " + name + " :Unknown command\r\n");
 }

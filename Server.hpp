@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <deque>
 #include <poll.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -34,7 +35,7 @@ public:
     int getSocket() const;
     const std::string& getPassword() const;
     Client* findClient(int fileDescriptor);
-    const std::vector<Client>& getClients() const;
+    const std::deque<Client>& getClients() const;
     Channel* findChannel(const std::string& name);/////////
     std::vector<Channel>& getChannels();/////////////////
 
@@ -61,7 +62,7 @@ private:
     std::string _password;
     int _socket;
     bool _running;
-    std::vector<Client> _clients;
+    std::deque<Client> _clients;
     std::vector<Channel> _channels;
     std::vector<struct pollfd> _pollSet;
     

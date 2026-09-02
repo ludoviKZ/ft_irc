@@ -22,6 +22,7 @@ public:
 	bool isRegistered() const;
 	bool isAuthenticated() const;
 	bool isOperator() const;
+	bool isClosing() const;
 
 	//setters
 	void setregistered(bool registered);
@@ -31,6 +32,7 @@ public:
 	void setUsername(const std::string username);
 	void setRegistered(bool registered);
 	void setOperator(bool operatorStatus);
+	void setClosing(bool closing);
 	void updateRegistrationStatus();
 	
 
@@ -43,6 +45,7 @@ public:
 	const std::string& getInput() const;
 	const std::string& getOutput() const;
 	void clearInput();
+	void removeOutput(std::size_t amount);
 
 private:
 	int fd;
@@ -52,6 +55,7 @@ private:
 	bool authenticated;
 	bool registered;
 	bool operator_status;
+	bool closing;
 	std::string input;
 	std::string output;
 };

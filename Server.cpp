@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <sstream>
 #include <algorithm>
+#include <iostream>
 
 // Constructor
 Server::Server(int port, const std::string& password) 
@@ -79,6 +80,13 @@ void Server::acceptClients()
     int cs = accept(_socket, (struct sockaddr*)&csin, &csin_len);
     if (cs < 0)
         return;
+
+    int flags = fcntl(cs, F_GETFL, 0);
+    if (flags < 0 || fcntl(cs, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        close(cs);
+        return;
+    }
 
     std::cout << "New client #" << cs << " from " 
               << inet_ntoa(csin.sin_addr) << ":" 
@@ -215,7 +223,7 @@ void Server::processCommand(Client* client, const std::string& command)
         
         std::string msg = ":" + client->getNickname() + " NICK " + tokens[1] + "\r\n";
         // Broadcast del cambio nickname a tutti i client
-        for (std::vector<Client>::iterator it = _clients.begin();
+        for (std::deque<Client>::iterator it = _clients.begin();
              it != _clients.end(); ++it)
         {
             if (it->getFd() != client->getFd())
@@ -270,18 +278,22 @@ void Server::readFromClient(Client& client)
     else
     {
         _readBuffer[r] = '\0';
+        std::cerr << "[IRC RECV fd=" << cs << "] " << r << " bytes" << std::endl;
         client.appendInput(std::string(_readBuffer, r));
         
-        // Processa i comandi (gestisce comandi multipli separati da \r\n)
+        // Accept both RFC-compliant CRLF and clients that send LF only.
         std::string input = client.getInput();
         size_t pos;
-        while ((pos = input.find("\r\n")) != std::string::npos)
+        while ((pos = input.find('\n')) != std::string::npos)
         {
-            std::string command = input.substr(0, pos + 2);
+            std::string command = input.substr(0, pos + 1);
             executeCommand(*this, client, command);
-            input.erase(0, pos + 2);
+            input.erase(0, pos + 1);
+            if (client.isClosing())
+                break;
         }
-        client.setInput(input);
+        if (!client.isClosing())
+            client.setInput(input);
     }
 }
 
@@ -291,13 +303,10 @@ void Server::writeToClient(Client& client)
     if (client.hasOutput())
     {
         std::string output = client.getOutput();
-        int sent = send(client.getFd(), output.c_str(), output.length(), 0);
-        if (sent > 0 && sent < static_cast<int>(output.length()))
-        {
-            // Se non tutto è stato inviato, mantieni il resto
-            client.prependOutput(output.substr(sent));
-        }
-        else if (sent < 0)
+        int sent = send(client.getFd(), output.c_str(), output.length(), MSG_NOSIGNAL);
+        if (sent > 0)
+            client.removeOutput(static_cast<std::size_t>(sent));
+        else if (sent < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)
         {
             // Errore di invio
             removeClient(client.getFd());
@@ -307,11 +316,14 @@ void Server::writeToClient(Client& client)
 
 void Server::removeClient(int fd)
 {
-    for (std::vector<Client>::iterator it = _clients.begin(); 
+    for (std::deque<Client>::iterator it = _clients.begin(); 
          it != _clients.end(); ++it)
     {
         if (it->getFd() == fd)
         {
+            for (std::vector<Channel>::iterator channel = _channels.begin();
+                 channel != _channels.end(); ++channel)
+                channel->removeClient(*it);
             close(fd);
             _clients.erase(it);
             break;
@@ -342,7 +354,7 @@ void Server::rebuildPollSet()
     _pollSet.push_back(serverPfd);
     
     // Aggiungi i client
-    for (std::vector<Client>::iterator it = _clients.begin();
+    for (std::deque<Client>::iterator it = _clients.begin();
          it != _clients.end(); ++it)
     {
         struct pollfd clientPfd;
@@ -396,13 +408,24 @@ void Server::run()
                 if (client)
                     writeToClient(*client);
             }
+            if (_pollSet[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+                removeClient(_pollSet[i].fd);
         }
+        for (std::deque<Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+        {
+            if (it->isClosing() && !it->hasOutput())
+            {
+                removeClient(it->getFd());
+                break;
+            }
+        }
+        rebuildPollSet();
     }
 }
 
 Client* Server::findClient(int fileDescriptor)
 {
-    for (std::vector<Client>::iterator it = _clients.begin();
+    for (std::deque<Client>::iterator it = _clients.begin();
          it != _clients.end(); ++it)
     {
         if (it->getFd() == fileDescriptor)
@@ -413,7 +436,7 @@ Client* Server::findClient(int fileDescriptor)
 
 Client* Server::findClientByNickname(const std::string& nickname)
 {
-    for (std::vector<Client>::iterator it = _clients.begin();
+    for (std::deque<Client>::iterator it = _clients.begin();
          it != _clients.end(); ++it)
     {
         if (it->getNickname() == nickname)
@@ -451,7 +474,7 @@ void Server::stop()
         close(_socket);
         _socket = -1;
     }
-    for (std::vector<Client>::iterator it = _clients.begin();
+    for (std::deque<Client>::iterator it = _clients.begin();
          it != _clients.end(); ++it)
     {
         close(it->getFd());
@@ -462,4 +485,4 @@ void Server::stop()
 int Server::getPort() const { return _port; }
 int Server::getSocket() const { return _socket; }
 const std::string& Server::getPassword() const { return _password; }
-const std::vector<Client>& Server::getClients() const { return _clients; }
+const std::deque<Client>& Server::getClients() const { return _clients; }
