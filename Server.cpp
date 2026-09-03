@@ -278,7 +278,7 @@ void Server::readFromClient(Client& client)
     else
     {
         _readBuffer[r] = '\0';
-        //DEBUGstd::cerr << "[IRC RECV fd=" << cs << "] " << r << " bytes" << std::endl;
+        std::cerr << "[IRC RECV fd=" << cs << "] " << r << " bytes" << std::endl;
         client.appendInput(std::string(_readBuffer, r));
         
         // Accept both RFC-compliant CRLF and clients that send LF only.
