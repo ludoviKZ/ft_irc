@@ -5,7 +5,8 @@ SRCS = main.cpp \
 	Server.cpp \
 	Client.cpp \
 	Channel.cpp \
-	commands/commands.cpp
+	commands/commands.cpp \
+	registration/registration.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 TARGET = ircserv
