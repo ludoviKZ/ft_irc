@@ -332,11 +332,22 @@ static void handleQuit(Server& server, Client& client, const std::vector<std::st
 
 static void handleMode(Server& server, Client& client, const std::vector<std::string>& parameters)
 {
+<<<<<<< HEAD
     if (parameters.empty())
+=======
+    (void)server;
+	if (!client.isOperator())
+    {
+        sendReply(client, ":localhost 461 " + client.getNickname() + " MODE :Only operators can use MODE command\r\n");
+        return;
+    }
+    if (parameters.size() < 2)
+>>>>>>> refs/remotes/origin/asalucci
     {
         sendReply(client, ":localhost 461 " + clientNameOrStar(client) + " MODE :Not enough parameters\r\n");
         return;
     }
+<<<<<<< HEAD
 
     if (parameters.size() == 1)
     {
@@ -368,6 +379,10 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
         sendReply(client, ":localhost 403 " + client.getNickname() + " " + parameters[0] + " :No such channel\r\n");
         return;
     }
+=======
+	Client *targetClient;
+	Channel *channel = server.findChannel(parameters[0]);
+>>>>>>> refs/remotes/origin/asalucci
 	if (parameters[1] == "+i")
 		channel->setInviteOnly(true);
 	else if (parameters[1] == "-i")
@@ -442,6 +457,7 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
        		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE +l :User limit value parameter required\r\n");
         	return;
     	}
+<<<<<<< HEAD
         char *end = NULL;
         long limit = std::strtol(parameters[2].c_str(), &end, 10);
         if (end == parameters[2].c_str() || *end != '\0' || limit < 1)
@@ -450,11 +466,19 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
             return;
         }
 		channel->setUserLimit(client, static_cast<int>(limit));
+=======
+		channel->setUserLimit(client, std::stoi(parameters[2]));
+>>>>>>> refs/remotes/origin/asalucci
 	}
 	else if (parameters[1] == "-l")
 		channel->setUserLimit(client, 0);
 	else
 		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE :Invalid parameter\r\n");
+<<<<<<< HEAD
+=======
+    // Placeholder for channel/user mode handling.
+    // server.handleModeCommand(&client, parameters);
+>>>>>>> refs/remotes/origin/asalucci
     sendReply(client, ":localhost 324 " + client.getNickname() + " " + parameters[0] + " +\r\n");
 }
 
