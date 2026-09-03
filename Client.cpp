@@ -2,13 +2,13 @@
 
 Client::Client()
     : fd(-1), address(""), nickname(""), username(""), authenticated(false),
-      registered(false), operator_status(false), input(""), output("")
+      registered(false), operator_status(false), closing(false), input(""), output("")
 {
 }
 
 Client::Client(int fileDescriptor, const std::string& address)
     : fd(fileDescriptor), address(address), nickname(""), username(""),
-      authenticated(false), registered(false), operator_status(false), input(""), output("")
+      authenticated(false), registered(false), operator_status(false), closing(false), input(""), output("")
 {
 }
 
@@ -20,6 +20,7 @@ Client::Client(const Client& other)
     : fd(other.fd), address(other.address), nickname(other.nickname),
       username(other.username), authenticated(other.authenticated),
       registered(other.registered), operator_status(other.operator_status),
+      closing(other.closing),
       input(other.input), output(other.output)
 {
 }
@@ -35,6 +36,7 @@ Client& Client::operator=(const Client& other)
         authenticated = other.authenticated;
         registered = other.registered;
         operator_status = other.operator_status;
+        closing = other.closing;
         input = other.input;
         output = other.output;
     }
@@ -76,6 +78,11 @@ bool Client::isOperator() const
     return operator_status;
 }
 
+bool Client::isClosing() const
+{
+    return closing;
+}
+
 void Client::appendInput(const std::string& data)
 {
     input += data;
@@ -109,6 +116,11 @@ void Client::setRegistered(bool registered)
 void Client::setOperator(bool operatorStatus)
 {
     this->operator_status = operatorStatus;
+}
+
+void Client::setClosing(bool closing)
+{
+    this->closing = closing;
 }
 
 void Client::updateRegistrationStatus()
@@ -154,4 +166,12 @@ const std::string& Client::getOutput() const
 void Client::clearInput()
 {
     input.clear();
+}
+
+void Client::removeOutput(std::size_t amount)
+{
+    if (amount >= output.size())
+        output.clear();
+    else
+        output.erase(0, amount);
 }

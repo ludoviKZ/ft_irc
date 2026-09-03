@@ -62,6 +62,7 @@ bool Channel::hasKey() const { return !_key.empty(); }
 bool Channel::hasUserLimit() const { return _userLimit > 0; }
 int Channel::getUserLimit() const { return _userLimit; }
 const std::vector<Client*>& Channel::getClients() const { return _clients; }
+const std::vector<Client*>& Channel::getOperators() const { return _operators; }
 
 // Setters
 void Channel::setName(const std::string& name) { _name = name; }
