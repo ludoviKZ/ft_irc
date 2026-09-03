@@ -227,15 +227,21 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
         return;
     }
 
-    Channel *channel = server.findChannel(parameters[0]);
     if (parameters.size() == 1)
     {
-        if (channel != NULL)
-            sendReply(client, ":localhost 324 " + client.getNickname() + " " + parameters[0] + " +\r\n");
-        else if (parameters[0] == client.getNickname())
+        if (parameters[0] == client.getNickname())
+		{
             sendReply(client, ":localhost 221 " + client.getNickname() + " +\r\n");
-        else
-            sendReply(client, ":localhost 501 " + client.getNickname() + " :Unknown MODE target\r\n");
+			return ;
+		}
+		Channel *channel = server.findChannel(parameters[0]);
+        if (channel != NULL)
+		{
+			std::cerr << ":localhost 324 " << client.getNickname() << " " << parameters[0] << " +" << "+itklo " << server.getPassword() << " " << channel->getUserLimit() << "\r\n:localhost 329 "
+				<< client.getNickname() << " " << parameters[0] << channel->getCreationTime() << "\r\n";
+			return;
+		}
+		sendReply(client, ":localhost 501 " + client.getNickname() + " :Unknown MODE target\r\n");
         return;
     }
 
@@ -245,8 +251,10 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
         return;
     }
 
+	Channel *channel = server.findChannel(parameters[0]);
+
     Client *targetClient;
-    if (channel == NULL)
+    if (channel == NULL)//RIDONDANTE
     {
         sendReply(client, ":localhost 403 " + client.getNickname() + " " + parameters[0] + " :No such channel\r\n");
         return;
