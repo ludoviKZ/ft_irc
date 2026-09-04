@@ -11,6 +11,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <iostream>
+#include <sstream>
 
 void sendReply(Client& client, const std::string& message)
 {
@@ -348,14 +349,38 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 		Channel *channel = server.findChannel(parameters[0]);
         if (channel != NULL)
 		{
-			std::cerr << ":localhost 324 " << client.getNickname() << " " << parameters[0] << " +" << "+itklo " << server.getPassword() << " " << channel->getUserLimit() << "\r\n:localhost 329 "
-				<< client.getNickname() << " " << parameters[0] << channel->getCreationTime() << "\r\n";
+			std::string ModFlags = "";
+			if (channel->isInviteOnly())
+				ModFlags += "i";
+			if (channel->isTopicRestricted())
+				ModFlags += "t";
+			std::string space1 = "";
+			if (channel->hasKey())
+			{
+				ModFlags += "k";
+				space1 = " ";
+			}
+			if (channel->hasUserLimit())
+				ModFlags += "l";
+			std::string limitStr = "";
+			std::string space2 = "";
+			if (channel->getUserLimit())
+			{
+				std::ostringstream oss;
+				oss << channel->getUserLimit();
+				limitStr = oss.str();
+				space2 = " ";
+			}
+			sendReply(client, ":localhost 324 " + client.getNickname() + " " + parameters[0] + " +" + ModFlags + space1 + channel->getKey()
+				+ space2 + limitStr + "\r\n");
+			sendReply(client, ":localhost 329 " + client.getNickname() + " " + parameters[0] + " " + channel->getCreationTime() + "\r\n");
 			return;
 		}
 		sendReply(client, ":localhost 501 " + client.getNickname() + " :Unknown MODE target\r\n");
         return;
     }
 
+	// caso 2 o piu' parametri
     if (!client.isOperator())
     {
         sendReply(client, ":localhost 482 " + client.getNickname() + " " + parameters[0] + " :You're not channel operator\r\n");
@@ -363,13 +388,12 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
     }
 
 	Channel *channel = server.findChannel(parameters[0]);
-
-    Client *targetClient;
-    if (channel == NULL)//RIDONDANTE
+    if (channel == NULL)
     {
         sendReply(client, ":localhost 403 " + client.getNickname() + " " + parameters[0] + " :No such channel\r\n");
         return;
     }
+    Client *targetClient;
 	if (parameters[1] == "+i")
 		channel->setInviteOnly(true);
 	else if (parameters[1] == "-i")
@@ -388,16 +412,6 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 		channel->setKey(parameters[2]);
 	}
 	else if (parameters[1] == "-k")
-	{
-		if (parameters.size() < 3)
-		{
-       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE -k :Password parameter required\r\n");
-        	return;
-    	}
-		if (channel->getKey() == parameters[2])
-			channel->setKey("");
-	}
-	else if (parameters[1] == "+k")
 	{
 		if (parameters.size() < 3)
 		{

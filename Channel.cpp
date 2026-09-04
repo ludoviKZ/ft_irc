@@ -70,7 +70,7 @@ void Channel::setTopic(const std::string& topic) { _topic = topic; }
 void Channel::setKey(const std::string& key) { _key = key; }
 void Channel::setUserLimit(Client& client, int limit)
 {
-	if (limit >= getClientCount())
+	if (limit >= getClientCount() || limit == 0)
 		_userLimit = limit;
 	else
         sendReply(client, ":localhost 471 " + client.getNickname() + " " + _name + " :Cannot set user limit below current user count\r\n");
