@@ -120,6 +120,12 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
         sendReply(client, ":localhost 461 " + client.getNickname() + " JOIN :Not enough parameters\r\n");
         return;
     }
+	if (parameters[0][0] != '#')
+	{
+		sendReply(client, ":localhost 403 " + client.getNickname() + " " + parameters[0] +
+			" :No such channel\r\n"); //channel names must be preceded by '#'
+		return;
+	}
 
     std::string channelName = parameters[0];
     Channel* channel = server.findChannel(channelName);
@@ -376,23 +382,36 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 			sendReply(client, ":localhost 329 " + client.getNickname() + " " + parameters[0] + " " + channel->getCreationTime() + "\r\n");
 			return;
 		}
-		sendReply(client, ":localhost 501 " + client.getNickname() + " :Unknown MODE target\r\n");
+		sendReply(client, ":localhost 403 " + client.getNickname() + " :Unknown MODE target\r\n");
         return;
     }
 
-	// caso 2 o piu' parametri
-    if (!client.isOperator())
-    {
-        sendReply(client, ":localhost 482 " + client.getNickname() + " " + parameters[0] + " :You're not channel operator\r\n");
-        return;
-    }
-
+	//caso 2 o piu' parametri
 	Channel *channel = server.findChannel(parameters[0]);
     if (channel == NULL)
     {
         sendReply(client, ":localhost 403 " + client.getNickname() + " " + parameters[0] + " :No such channel\r\n");
         return;
     }
+	if (parameters[1] == "+b")
+		return;
+
+	if (!(parameters[1] == "+i" || parameters[1] == "-i"
+		|| parameters[1] == "+t" || parameters[1] == "-t"
+		|| parameters[1] == "+k" || parameters[1] == "-k"
+		|| parameters[1] == "+o" || parameters[1] == "-o"
+		|| parameters[1] == "+l" || parameters[1] == "-l"))
+	{
+		sendReply(client, ":localhost 472 " + client.getNickname() + " MODE :Invalid parameter\r\n");
+		return;
+	}
+
+    if (!client.isOperator())
+    {
+        sendReply(client, ":localhost 482 " + client.getNickname() + " " + parameters[0] + " :You're not channel operator\r\n");
+        return;
+    }
+
     Client *targetClient;
 	if (parameters[1] == "+i")
 		channel->setInviteOnly(true);
@@ -425,13 +444,13 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 	{
 		if (parameters.size() < 3)
 		{
-       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE +o :User parameter required\r\n");
+       		sendReply(client, ":localhost 401 " + client.getNickname() + " MODE +o :User parameter required\r\n");
         	return;
     	}
 		targetClient = findClientByNickname(server, parameters[2]);
 		if (!targetClient)
 		{
-       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE +o :No user with this Nick\r\n");
+       		sendReply(client, ":localhost 401 " + client.getNickname() + " MODE +o :No user with this Nick\r\n");
         	return;
     	}
 		targetClient->setOperator(true);
@@ -469,9 +488,6 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 	}
 	else if (parameters[1] == "-l")
 		channel->setUserLimit(client, 0);
-	else
-		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE :Invalid parameter\r\n");
-    sendReply(client, ":localhost 324 " + client.getNickname() + " " + parameters[0] + " +\r\n");
 }
 
 static void handleWho(Server& server, Client& client, const std::vector<std::string>& parameters)
