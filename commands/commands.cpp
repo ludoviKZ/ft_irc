@@ -163,6 +163,49 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
     }
 }
 
+static void handleTopic(Server& server, Client& client, const std::vector<std::string>& parameters)
+{
+    if (parameters.empty())
+    {
+        sendReply(client, ":localhost 461 " + client.getNickname() + " TOPIC :Not enough parameters\r\n");
+        return;
+    }
+	if (parameters.size() > 2)
+    {
+        sendReply(client, ":localhost 461 " + client.getNickname() + " TOPIC :Too many parameters\r\n");
+        return;
+    }
+
+    std::string channelName = parameters[0];
+    Channel *channel = server.findChannel(channelName);
+    if (channel == NULL)
+    {
+        sendReply(client, ":localhost 403 " + client.getNickname() + " " + channelName + " :No such channel\r\n");
+        return;
+    }
+
+    if (parameters.size() == 1)
+    {
+        if (channel->getTopic().empty())
+            sendReply(client, ":localhost 331 " + client.getNickname() + " " + channelName + " :No topic is set\r\n");
+        else
+            sendReply(client, ":localhost 332 " + client.getNickname() + " " + channelName + " :" + channel->getTopic() + "\r\n");
+        return;
+    }
+
+    if (channel->isTopicRestricted() && !client.isOperator())
+    {
+        sendReply(client, ":localhost 482 " + client.getNickname() + " " + channelName + " :You're not channel operator\r\n");
+        return;
+    }
+
+    channel->setTopic(parameters[1]);
+
+	for (std::vector<Client *>::const_iterator it = channel->getClients().begin(); it != channel->getClients().end(); ++it)
+		sendReply(**it, ":" + client.getNickname() + "!" + client.getUsername() + "@localhost TOPIC " + channelName + " :"
+			+ parameters[1] + "\r\n");
+}
+
 static void handlePart(Server& server, Client& client, const std::vector<std::string>& parameters)
 {
     if (parameters.empty())
@@ -572,6 +615,8 @@ void executeCommand(Server& server, Client& client, const std::string& rawComman
         sendReply(client, ":localhost 451 " + clientNameOrStar(client) + " :You have not registered\r\n");
     else if (name == "JOIN")
         handleJoin(server, client, parameters);
+    else if (name == "TOPIC")
+        handleTopic(server, client, parameters);
     else if (name == "PART")
         handlePart(server, client, parameters);
     else if (name == "PRIVMSG")
