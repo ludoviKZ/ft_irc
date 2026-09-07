@@ -45,6 +45,7 @@ public:
 	void removeClient(Client& client);
 	void addOperator(Client& client);
 	void removeOperator(Client& client);
+	bool isClientInvited(const Client& client) const;
 
 private:
 	std::string _name;
@@ -56,6 +57,7 @@ private:
 	bool _topicRestricted;
 	std::vector<Client*> _clients;
 	std::vector<Client*> _operators;
+	std::vector<Client*> _invitedClients;
 };
 
 #endif

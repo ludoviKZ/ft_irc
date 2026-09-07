@@ -116,7 +116,7 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
         channel->addOperator(client);
     }
 
-    if (channel->isInviteOnly())
+    if (channel->isInviteOnly() && channel->isClientInvited(client) == false)
     {
         sendReply(client, ":localhost 473 " + client.getNickname() + " " + channelName + " :Cannot join channel (+i)\r\n");
         return;
@@ -301,6 +301,7 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
         if (channel != NULL)
 		{
 			std::string ModFlags = "";
+			ModFlags += "n";
 			if (channel->isInviteOnly())
 				ModFlags += "i";
 			if (channel->isTopicRestricted())
@@ -475,6 +476,76 @@ static void handleUserhost(Server& server, Client& client, const std::vector<std
     sendReply(client, reply);
 }
 
+void handleInvite(Server& server, Client& client, const std::vector<std::string>& parameters)
+{
+    if (parameters.size() < 2)
+    {
+        sendReply(client, ":localhost 461 " + client.getNickname() + " INVITE :Not enough parameters\r\n");
+        return;
+    }
+
+    std::string targetNick = parameters[0];
+    std::string channelName = parameters[1];
+
+    Channel* channel = server.findChannel(channelName);
+    if (!channel)
+    {
+        sendReply(client, ":localhost 403 " + client.getNickname() + " " + channelName + " :No such channel\r\n");
+        return;
+    }
+
+    Client* targetClient = findClientByNickname(server, targetNick);
+    if (!targetClient)
+    {
+        sendReply(client, ":localhost 401 " + client.getNickname() + " " + targetNick + " :No such nick/channel\r\n");
+        return;
+    }
+
+    if (!client.isOperator())
+    {
+        sendReply(client, ":localhost 482 " + client.getNickname() + " " + channelName + " :You're not channel operator\r\n");
+        return;
+    }
+
+    channel->addClient(*targetClient);
+    sendReply(*targetClient, ":" + client.getNickname() + "!" + client.getUsername() + "@localhost INVITE " + targetNick + " :" + channelName + "\r\n");
+}
+
+void handleRemoveInvite(Server& server, Client& client, const std::vector<std::string>& parameters)
+{
+    if (parameters.size() < 2)
+    {
+        sendReply(client, ":localhost 461 " + client.getNickname() + " REMOVEINVITE :Not enough parameters\r\n");
+        return;
+    }
+
+    std::string targetNick = parameters[0];
+    std::string channelName = parameters[1];
+
+    Channel* channel = server.findChannel(channelName);
+    if (!channel)
+    {
+        sendReply(client, ":localhost 403 " + client.getNickname() + " " + channelName + " :No such channel\r\n");
+        return;
+    }
+
+    Client* targetClient = findClientByNickname(server, targetNick);
+    if (!targetClient)
+    {
+        sendReply(client, ":localhost 401 " + client.getNickname() + " " + targetNick + " :No such nick/channel\r\n");
+        return;
+    }
+
+    if (!client.isOperator())
+    {
+        sendReply(client, ":localhost 482 " + client.getNickname() + " " + channelName + " :You're not channel operator\r\n");
+        return;
+    }
+
+    channel->removeClient(*targetClient);
+    sendReply(*targetClient, ":" + client.getNickname() + "!" + client.getUsername() + "@localhost REMOVEINVITE " + targetNick + " :" + channelName + "\r\n");
+}
+
 void executeCommand(Server& server, Client& client, const std::string& rawCommand)
 {
     std::string command = trimTrailingCRLF(rawCommand);
@@ -531,6 +602,10 @@ void executeCommand(Server& server, Client& client, const std::string& rawComman
         handleWho(server, client, parameters);
     else if (name == "USERHOST")
         handleUserhost(server, client, parameters);
+    else if (name == "INVITE")
+        handleInvite(server, client, parameters);
+    else if (name == "REMOVEINVITE")
+        handleRemoveInvite(server, client, parameters);
     else
         sendReply(client, ":localhost 421 " + client.getNickname() + " " + name + " :Unknown command\r\n");
 }

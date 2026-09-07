@@ -1,24 +1,21 @@
 #include "Channel.hpp"
 #include "commands/commands.hpp"
 #include <ctime>
+#include <sstream>
 #include <sys/socket.h>
 #include <cstring>
 
-Channel::Channel() : _userLimit(0), _inviteOnly(false), _topicRestricted(false)
+Channel::Channel() : _userLimit(0), _inviteOnly(false), _topicRestricted(true)
 {
 }
 
 Channel::Channel(const std::string& name) 
-    : _name(name), _userLimit(0), _inviteOnly(false), _topicRestricted(false)
+    : _name(name), _userLimit(0), _inviteOnly(false), _topicRestricted(true)
 {
     time_t now = time(NULL);
-    char* timeStr = ctime(&now);
-    if (timeStr)
-    {
-        _creationTime = std::string(timeStr);
-        if (!_creationTime.empty())
-            _creationTime.erase(_creationTime.size() - 1); // Rimuovi newline
-    }
+    std::ostringstream timestamp;
+    timestamp << now;
+    _creationTime = timestamp.str();
 }
 
 Channel::~Channel()
@@ -114,4 +111,16 @@ void Channel::removeOperator(Client& client)
             break;
         }
     }
+}
+bool Channel::isClientInvited(const Client& client) const
+{
+    if (client.isOperator())
+        return true;
+    for (std::vector<Client*>::const_iterator it = _invitedClients.begin();
+         it != _invitedClients.end(); ++it)
+    {
+        if ((*it)->getFd() == client.getFd())
+            return true;
+    }
+    return false;
 }
