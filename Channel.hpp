@@ -45,6 +45,7 @@ public:
 	void removeClient(Client& client);
 	void addOperator(Client& client);
 	void removeOperator(Client& client);
+	bool isChannelOperator(Client& client) const;
 
 private:
 	std::string _name;
@@ -59,4 +60,3 @@ private:
 };
 
 #endif
-
