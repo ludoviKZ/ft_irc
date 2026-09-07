@@ -17,14 +17,11 @@
 #include "Channel.hpp"
 
 #define BUF_SIZE 4096
-
 class Server
 {
 public:
     Server(int port, const std::string& password);
     ~Server();
-    Server(const Server& other);
-    Server& operator=(const Server& other);
     
     void start();
     void run();
@@ -49,6 +46,8 @@ public:
 
 private:
     Server();
+    Server(const Server& other);
+    Server& operator=(const Server& other);
     
     void createServerSocket();
     void setupPollSet();

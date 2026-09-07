@@ -143,9 +143,12 @@ void Client::setInput(const std::string& data)
     input = data;
 }
 
-void Client::appendOutput(const std::string& data)
+bool Client::appendOutput(const std::string& data)
 {
+    if (data.size() > MAX_CLIENT_BUFFER_SIZE - output.size())
+        return false;
     output += data;
+    return true;
 }
 
 void Client::prependOutput(const std::string& data)

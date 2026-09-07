@@ -20,7 +20,8 @@ void sendReply(Client& client, const std::string& message)
     std::cerr << "[IRC OUT fd=" << client.getFd() << "] "
               << message.substr(0, message.length() - (message.length() >= 2 ? 2 : 0))
               << std::endl;
-    client.appendOutput(message);
+    if (!client.appendOutput(message))
+        client.setClosing(true);
 }
 
 static Client* findClientByNickname(Server& server, const std::string& nickname)
@@ -155,6 +156,18 @@ static void handlePart(Server& server, Client& client, const std::vector<std::st
 
     channel->removeClient(client);
     sendReply(client, ":" + client.getNickname() + "!" + client.getUsername() + "@localhost PART " + channelName + "\r\n");
+    if (channel->getClientCount() == 0)
+    {
+        std::vector<Channel>& channels = server.getChannels();
+        for (std::vector<Channel>::iterator it = channels.begin(); it != channels.end(); ++it)
+        {
+            if (&(*it) == channel)
+            {
+                channels.erase(it);
+                break;
+            }
+        }
+    }
 }
 
 static void handlePrivmsg(Server& server, Client& client, const std::vector<std::string>& parameters)

@@ -10,7 +10,7 @@
 
 // Constructor
 Server::Server(int port, const std::string& password) 
-    : _port(port), _password(password), _running(false)
+    : _port(port), _password(password), _socket(-1), _running(false)
 {
     createServerSocket();
 }
@@ -18,30 +18,6 @@ Server::Server(int port, const std::string& password)
 Server::~Server()
 {
     stop();
-}
-
-Server::Server(const Server& other)
-    : _port(other._port), _password(other._password), _socket(other._socket),
-      _running(other._running), _clients(other._clients), _channels(other._channels),
-      _pollSet(other._pollSet)
-{
-    std::memcpy(_readBuffer, other._readBuffer, BUF_SIZE + 1);
-}
-
-Server& Server::operator=(const Server& other)
-{
-    if (this != &other)
-    {
-        _port = other._port;
-        _password = other._password;
-        _socket = other._socket;
-        _running = other._running;
-        _clients = other._clients;
-        _channels = other._channels;
-        _pollSet = other._pollSet;
-        std::memcpy(_readBuffer, other._readBuffer, BUF_SIZE + 1);
-    }
-    return *this;
 }
 
 void Server::createServerSocket()
@@ -52,7 +28,11 @@ void Server::createServerSocket()
 
     int opt = 1;
     if (setsockopt(_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+    {
+        close(_socket);
+        _socket = -1;
         throw std::runtime_error("setsockopt failed");
+    }
 
     struct sockaddr_in sin;
     std::memset(&sin, 0, sizeof(sin));
@@ -61,14 +41,27 @@ void Server::createServerSocket()
     sin.sin_port = htons(_port);
 
     if (bind(_socket, (struct sockaddr*)&sin, sizeof(sin)) < 0)
+    {
+        close(_socket);
+        _socket = -1;
         throw std::runtime_error("bind failed");
+    }
 
     if (listen(_socket, 42) < 0)
+    {
+        close(_socket);
+        _socket = -1;
         throw std::runtime_error("listen failed");
+    }
 
     // Set non-blocking
     int flags = fcntl(_socket, F_GETFL, 0);
-    fcntl(_socket, F_SETFL, flags | O_NONBLOCK);
+    if (flags < 0 || fcntl(_socket, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        close(_socket);
+        _socket = -1;
+        throw std::runtime_error("failed to set server socket non-blocking");
+    }
 }
 
 void Server::acceptClients()
@@ -280,6 +273,12 @@ void Server::readFromClient(Client& client)
         _readBuffer[r] = '\0';
         std::cerr << "[IRC RECV fd=" << cs << "] " << r << " bytes" << std::endl;
         client.appendInput(std::string(_readBuffer, r));
+        if (client.getInput().size() > MAX_CLIENT_BUFFER_SIZE)
+        {
+            client.clearInput();
+            client.setClosing(true);
+            return;
+        }
         
         // Accept both RFC-compliant CRLF and clients that send LF only.
         std::string input = client.getInput();
@@ -322,8 +321,14 @@ void Server::removeClient(int fd)
         if (it->getFd() == fd)
         {
             for (std::vector<Channel>::iterator channel = _channels.begin();
-                 channel != _channels.end(); ++channel)
+                 channel != _channels.end();)
+            {
                 channel->removeClient(*it);
+                if (channel->getClientCount() == 0)
+                    channel = _channels.erase(channel);
+                else
+                    ++channel;
+            }
             close(fd);
             _clients.erase(it);
             break;
@@ -336,6 +341,16 @@ void Server::removeClient(std::size_t index)
 {
     if (index < _clients.size())
     {
+        Client& client = _clients[index];
+        for (std::vector<Channel>::iterator channel = _channels.begin();
+             channel != _channels.end();)
+        {
+            channel->removeClient(client);
+            if (channel->getClientCount() == 0)
+                channel = _channels.erase(channel);
+            else
+                ++channel;
+        }
         close(_clients[index].getFd());
         _clients.erase(_clients.begin() + index);
         rebuildPollSet();
@@ -480,6 +495,8 @@ void Server::stop()
         close(it->getFd());
     }
     _clients.clear();
+    _channels.clear();
+    _pollSet.clear();
 }
 
 int Server::getPort() const { return _port; }
