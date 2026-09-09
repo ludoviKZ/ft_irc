@@ -112,6 +112,7 @@ void Channel::removeOperator(Client& client)
         }
     }
 }
+
 bool Channel::isClientInvited(const Client& client) const
 {
     if (client.isOperator())
@@ -123,4 +124,17 @@ bool Channel::isClientInvited(const Client& client) const
             return true;
     }
     return false;
+}
+
+bool Channel::isChannelOperator(Client& client) const
+{
+	if (client.isOperator())
+		return true;
+	for (std::vector<Client *>::const_iterator it = getOperators().begin();
+		it != getOperators().end(); ++it)
+	{
+		if (*it == &client)
+			return true;
+	}
+	return false;
 }

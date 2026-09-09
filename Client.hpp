@@ -24,6 +24,7 @@ public:
 	bool isRegistered() const;
 	bool isAuthenticated() const;
 	bool isOperator() const;
+	//bool isChannelOperator(Client& client) const;
 	bool isClosing() const;
 
 	//setters

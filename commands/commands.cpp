@@ -175,7 +175,7 @@ static void handleTopic(Server& server, Client& client, const std::vector<std::s
         return;
     }
 
-    if (channel->isTopicRestricted() && !client.isOperator())
+    if (channel->isTopicRestricted() && !(channel->isChannelOperator(client)))
     {
         sendReply(client, ":localhost 482 " + client.getNickname() + " " + channelName + " :You're not channel operator\r\n");
         return;
@@ -352,11 +352,12 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 		return;
 	}
 
-    if (!client.isOperator())
-    {
-        sendReply(client, ":localhost 482 " + client.getNickname() + " " + parameters[0] + " :You're not channel operator\r\n");
-        return;
-    }
+	if (!(channel->isChannelOperator(client)))
+	{
+		sendReply(client, ":localhost 482 " + client.getNickname()
+			+ " " + parameters[0] + " :You're not channel operator\r\n");
+		return;
+	}
 
     Client *targetClient;
 	if (parameters[1] == "+i")
@@ -399,7 +400,7 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
        		sendReply(client, ":localhost 401 " + client.getNickname() + " MODE +o :No user with this Nick\r\n");
         	return;
     	}
-		targetClient->setOperator(true);
+		channel->addOperator(*targetClient);
 	}
 	else if (parameters[1] == "-o")
 	{

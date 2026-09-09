@@ -45,6 +45,7 @@ public:
 	void removeClient(Client& client);
 	void addOperator(Client& client);
 	void removeOperator(Client& client);
+	bool isChannelOperator(Client& client) const;
 	bool isClientInvited(const Client& client) const;
 
 private:
@@ -61,4 +62,3 @@ private:
 };
 
 #endif
-
