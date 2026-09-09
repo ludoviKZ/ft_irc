@@ -301,7 +301,6 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
         if (channel != NULL)
 		{
 			std::string ModFlags = "";
-			ModFlags += "n";
 			if (channel->isInviteOnly())
 				ModFlags += "i";
 			if (channel->isTopicRestricted())
