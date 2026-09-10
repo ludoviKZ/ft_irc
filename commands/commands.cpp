@@ -520,8 +520,6 @@ void handleKick(Server& server, Client& client, const std::vector<std::string>& 
         return;
     }
 
-    //channel->removeClient(*targetClient);
-
 	if (parameters.size() == 3)
 		server.broadcastToChannel(channel, ":" + client.getNickname() + "!" + client.getUsername() + "@localhost KICK " +
 			channelName + " " + targetNick + " :" + parameters[2] + "\r\n");
@@ -591,7 +589,7 @@ void handleRemoveInvite(Server& server, Client& client, const std::vector<std::s
         return;
     }
 
-    if (!client.isOperator())
+    if (!channel->isChannelOperator(client))
     {
         sendReply(client, ":localhost 482 " + client.getNickname() + " " + channelName + " :You're not channel operator\r\n");
         return;
