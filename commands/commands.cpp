@@ -520,7 +520,7 @@ void handleKick(Server& server, Client& client, const std::vector<std::string>& 
         return;
     }
 
-    channel->removeClient(*targetClient);
+    //channel->removeClient(*targetClient);
 
 	if (parameters.size() == 3)
 		server.broadcastToChannel(channel, ":" + client.getNickname() + "!" + client.getUsername() + "@localhost KICK " +

@@ -120,7 +120,7 @@ void Server::broadcastToChannel(Channel* channel, const std::string& message)
         it != clients.end(); ++it)
     {
         if (*it)
-            send((*it)->getFd(), message.c_str(), message.length(), 0);
+			sendReply(**it, message);
     }
 }
 
