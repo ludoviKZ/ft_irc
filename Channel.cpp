@@ -128,8 +128,8 @@ bool Channel::isClientInvited(const Client& client) const
 
 bool Channel::isChannelOperator(Client& client) const
 {
-	if (client.isOperator())
-		return true;
+	// if (client.isOperator()) //Sconsigliato
+	// 	return true;
 	for (std::vector<Client *>::const_iterator it = getOperators().begin();
 		it != getOperators().end(); ++it)
 	{
@@ -138,3 +138,24 @@ bool Channel::isChannelOperator(Client& client) const
 	}
 	return false;
 }
+
+bool Channel::hasClient(Client& client) const
+{
+    for (std::vector<Client *>::const_iterator it = _clients.begin();
+        it != _clients.end(); ++it)
+    {
+        if (*it == &client)
+            return true;
+    }
+    return false;
+}
+
+// void Channel::broadcast(const std::string& message)
+// {
+//     for (std::vector<Client*>::const_iterator it = _clients.begin();
+//          it != _clients.end(); ++it)
+//     {
+//         if (*it)
+//             send((*it)->getFd(), message.c_str(), message.length(), 0);
+//     }
+// }

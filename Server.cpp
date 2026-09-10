@@ -93,7 +93,7 @@ void Server::acceptClients()
     rebuildPollSet();
 }
 
-void Server::broadcastToChannel(Channel* channel, Client* sender, const std::string& message)
+void Server::broadcastOtherChannelMembers(Channel* channel, Client* sender, const std::string& message)
 {
     if (!channel)
         return;
@@ -110,6 +110,19 @@ void Server::broadcastToChannel(Channel* channel, Client* sender, const std::str
     }
 }
 
+void Server::broadcastToChannel(Channel* channel, const std::string& message)
+{
+    if (!channel)
+        return;
+
+    const std::vector<Client*>& clients = channel->getClients();
+    for (std::vector<Client*>::const_iterator it = clients.begin();
+        it != clients.end(); ++it)
+    {
+        if (*it)
+            send((*it)->getFd(), message.c_str(), message.length(), 0);
+    }
+}
 
 void Server::handleJoinCommand(Client* client, const std::string& channelName)
 {

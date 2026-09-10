@@ -81,10 +81,10 @@ USER myusername 0 * :Real Name
 - `USER`: Registers username and real name.
 - `JOIN`: Joins or creates a channel.
 - `PRIVMSG`: Sends direct private messages to users or channel broadcasts.
-- `TOPIC`: Displays or modifies channel topics.
-- `INVITE`: Invites a user to an invite-only channel.
-- `KICK`: Expels a client from a channel (Operator privileges required).
-- `MODE`: Manages channel modes (`i`, `t`, `k`, `o`, `l`).
+- `TOPIC`: Displays or modifies (if you're operator) channel topics.
+- `INVITE`: Invites a user to an invite-only channel (operator privileges required).
+- `KICK`: Expels a client from a channel (operator privileges required).
+- `MODE`: Manages channel modes (`i`, `t`, `k`, `o`, `l`) (operator privileges required).
 - `PING / PONG`: Handles server-client connection keepalive checks.
 
 ### Supported Channel Modes
