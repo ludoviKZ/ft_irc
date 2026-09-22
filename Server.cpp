@@ -55,9 +55,8 @@ void Server::createServerSocket()
     }
 
     // Set non-blocking
-    int flags = fcntl(_socket, F_GETFL, 0);
-    if (flags < 0 || fcntl(_socket, F_SETFL, flags | O_NONBLOCK) < 0)
-    {
+	if (fcntl(_socket, F_SETFL, O_NONBLOCK) < 0)
+	{
         close(_socket);
         _socket = -1;
         throw std::runtime_error("failed to set server socket non-blocking");
@@ -72,12 +71,11 @@ void Server::acceptClients()
     
     int cs = accept(_socket, (struct sockaddr*)&csin, &csin_len);
     if (cs < 0)
-        return;
+		return;
 
-    int flags = fcntl(cs, F_GETFL, 0);
-    if (flags < 0 || fcntl(cs, F_SETFL, flags | O_NONBLOCK) < 0)
-    {
-        close(cs);
+	if (fcntl(_socket, F_SETFL, O_NONBLOCK) < 0)
+	{
+		close(cs);
         return;
     }
 
