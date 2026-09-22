@@ -45,8 +45,11 @@ public:
 	void removeClient(Client& client);
 	void addOperator(Client& client);
 	void removeOperator(Client& client);
+	bool hasClient(Client& client) const;
 	bool isChannelOperator(Client& client) const;
 	bool isClientInvited(const Client& client) const;
+
+	//void Channel::broadcast(const std::string& message);
 
 private:
 	std::string _name;

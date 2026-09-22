@@ -44,6 +44,8 @@ public:
     void removeClient(std::size_t index);
     void rebuildPollSet();
 
+	void broadcastToChannel(Channel* channel, const std::string& message);
+
 private:
     Server();
     Server(const Server& other);
@@ -51,7 +53,7 @@ private:
     
     void createServerSocket();
     void setupPollSet();
-    void broadcastToChannel(Channel* channel, Client* sender, const std::string& message);
+    void broadcastOtherChannelMembers(Channel* channel, Client* sender, const std::string& message);
     void processCommand(Client* client, const std::string& command);
     void handleJoinCommand(Client* client, const std::string& channelName);
     void handlePrivMsgCommand(Client* client, const std::string& target, const std::string& message);
