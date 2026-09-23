@@ -414,7 +414,7 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
        		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE -o :No user with this Nick\r\n");
         	return;
     	}
-		targetClient->setOperator(false);
+		channel->removeOperator(*targetClient);
 	}
 	else if (parameters[1] == "+l")
 	{

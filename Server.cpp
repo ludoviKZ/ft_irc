@@ -103,7 +103,7 @@ void Server::broadcastOtherChannelMembers(Channel* channel, Client* sender, cons
         Client* client = *it;
         if (client && client->getFd() != sender->getFd())
         {
-            send(client->getFd(), message.c_str(), message.length(), 0);
+            sendReply(*client, message);
         }
     }
 }
@@ -144,14 +144,14 @@ void Server::handleJoinCommand(Client* client, const std::string& channelName)
     // Invia conferma al client
     std::string confirm = ":" + client->getNickname() + "!" + client->getUsername() + 
                           "@localhost JOIN " + channelName + "\r\n";
-    send(client->getFd(), confirm.c_str(), confirm.length(), 0);
+    sendReply(*client, confirm);
     
     // Invia il topic se presente
     if (!channel->getTopic().empty())
     {
         std::string topicMsg = ":localhost 332 " + client->getNickname() + 
                                " " + channelName + " :" + channel->getTopic() + "\r\n";
-        send(client->getFd(), topicMsg.c_str(), topicMsg.length(), 0);
+        sendReply(*client, topicMsg);
     }
 }
 
@@ -176,7 +176,7 @@ void Server::handlePrivMsgCommand(Client* client, const std::string& target, con
             Client* member = *it;
             if (member && member->getFd() != client->getFd())
             {
-                send(member->getFd(), msg.c_str(), msg.length(), 0);
+                sendReply(*member, msg);
             }
         }
     }
@@ -186,14 +186,14 @@ void Server::handlePrivMsgCommand(Client* client, const std::string& target, con
         Client* targetClient = findClientByNickname(target);
         if (targetClient)
         {
-            send(targetClient->getFd(), msg.c_str(), msg.length(), 0);
+            sendReply(*targetClient, msg);
         }
         else
         {
             // Utente non trovato
             std::string error = ":localhost 401 " + client->getNickname() + 
                                " " + target + " :No such nick/channel\r\n";
-            send(client->getFd(), error.c_str(), error.length(), 0);
+            sendReply(*client, error);
         }
     }
 }
@@ -231,7 +231,7 @@ void Server::processCommand(Client* client, const std::string& command)
              it != _clients.end(); ++it)
         {
             if (it->getFd() != client->getFd())
-                send(it->getFd(), msg.c_str(), msg.length(), 0);
+                sendReply(*it, msg);
         }
     }
     // Comando USER
@@ -318,7 +318,6 @@ void Server::writeToClient(Client& client)
             client.removeOutput(static_cast<std::size_t>(sent));
         else if (sent < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)
         {
-            // Errore di invio
             removeClient(client.getFd());
         }
     }
@@ -346,26 +345,6 @@ void Server::removeClient(int fd)
         }
     }
     rebuildPollSet();
-}
-
-void Server::removeClient(std::size_t index)
-{
-    if (index < _clients.size())
-    {
-        Client& client = _clients[index];
-        for (std::vector<Channel>::iterator channel = _channels.begin();
-             channel != _channels.end();)
-        {
-            channel->removeClient(client);
-            if (channel->getClientCount() == 0)
-                channel = _channels.erase(channel);
-            else
-                ++channel;
-        }
-        close(_clients[index].getFd());
-        _clients.erase(_clients.begin() + index);
-        rebuildPollSet();
-    }
 }
 
 void Server::rebuildPollSet()
