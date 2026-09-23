@@ -24,7 +24,7 @@ int main(int argc, char** argv)
     try
     {
         Server server(static_cast<int>(port), argv[2]);
-        server.start();
+        server.run();
     }
     catch (const std::exception& e)
     {

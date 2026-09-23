@@ -42,7 +42,7 @@ public:
     void writeToClient(Client& client);
     void removeClient(int fd);
     void removeClient(std::size_t index);
-    void rebuildPollSet();
+    void buildPollSet();
 
 	void broadcastToChannel(Channel* channel, const std::string& message);
 

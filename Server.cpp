@@ -88,7 +88,7 @@ void Server::acceptClients()
     _clients.push_back(newClient);
     
     // Aggiorna il poll set
-    rebuildPollSet();
+    buildPollSet();
 }
 
 void Server::broadcastOtherChannelMembers(Channel* channel, Client* sender, const std::string& message)
@@ -102,9 +102,7 @@ void Server::broadcastOtherChannelMembers(Channel* channel, Client* sender, cons
     {
         Client* client = *it;
         if (client && client->getFd() != sender->getFd())
-        {
             sendReply(*client, message);
-        }
     }
 }
 
@@ -127,18 +125,15 @@ void Server::handleJoinCommand(Client* client, const std::string& channelName)
     if (!client)
         return;
     
-    // Cerca il channel
     Channel* channel = findChannel(channelName);
     
     if (!channel)
     {
-        // Crea un nuovo channel
         Channel newChannel(channelName);
         _channels.push_back(newChannel);
         channel = &_channels[_channels.size() - 1];
     }
     
-    // Aggiungi il client al channel
     channel->addClient(*client);
     
     // Invia conferma al client
@@ -160,11 +155,9 @@ void Server::handlePrivMsgCommand(Client* client, const std::string& target, con
     if (!client)
         return;
     
-    // Costruisci il messaggio da inviare
     std::string msg = ":" + client->getNickname() + "!" + client->getUsername() + 
                       "@localhost PRIVMSG " + target + " :" + message + "\r\n";
     
-    // Cerca se è un channel o un utente
     Channel* channel = findChannel(target);
     if (channel)
     {
@@ -175,9 +168,7 @@ void Server::handlePrivMsgCommand(Client* client, const std::string& target, con
         {
             Client* member = *it;
             if (member && member->getFd() != client->getFd())
-            {
                 sendReply(*member, msg);
-            }
         }
     }
     else
@@ -185,12 +176,10 @@ void Server::handlePrivMsgCommand(Client* client, const std::string& target, con
         // È un utente specifico
         Client* targetClient = findClientByNickname(target);
         if (targetClient)
-        {
             sendReply(*targetClient, msg);
-        }
         else
         {
-            // Utente non trovato
+            // Non trovato
             std::string error = ":localhost 401 " + client->getNickname() + 
                                " " + target + " :No such nick/channel\r\n";
             sendReply(*client, error);
@@ -202,24 +191,21 @@ void Server::processCommand(Client* client, const std::string& command)
 {
     if (!client)
         return;
-    
-    // Parser semplice dei comandi IRC
+
+    // Parser
     std::string cmd = command;
     size_t pos = cmd.find("\r\n");
     if (pos != std::string::npos)
         cmd = cmd.substr(0, pos);
-    
-    // Tokenizza il comando
+
     std::vector<std::string> tokens;
     std::string token;
     std::stringstream ss(cmd);
     while (ss >> token)
         tokens.push_back(token);
-    
     if (tokens.empty())
         return;
-    
-    // Comando NICK
+
     if (tokens[0] == "NICK" && tokens.size() >= 2)
     {
         client->setNickname(tokens[1]);
@@ -234,21 +220,17 @@ void Server::processCommand(Client* client, const std::string& command)
                 sendReply(*it, msg);
         }
     }
-    // Comando USER
     else if (tokens[0] == "USER" && tokens.size() >= 4)
     {
         client->setUsername(tokens[1]);
         client->updateRegistrationStatus();
     }
-    // Comando JOIN
     else if (tokens[0] == "JOIN" && tokens.size() >= 2)
     {
         handleJoinCommand(client, tokens[1]);
     }
-    // Comando PRIVMSG
     else if (tokens[0] == "PRIVMSG" && tokens.size() >= 3)
     {
-        // Trova il messaggio (potrebbe contenere spazi)
         size_t start = cmd.find(tokens[1]) + tokens[1].length();
         while (cmd[start] == ' ')
             start++;
@@ -267,15 +249,12 @@ void Server::readFromClient(Client& client)
     
     if (r <= 0)
     {
-        // Client disconnesso
         std::cout << "client #" << cs << " gone away" << std::endl;
         
         // Rimuovi il client da tutti i channel
         for (std::vector<Channel>::iterator it = _channels.begin();
              it != _channels.end(); ++it)
-        {
             it->removeClient(client);
-        }
         
         removeClient(cs);
     }
@@ -291,7 +270,7 @@ void Server::readFromClient(Client& client)
             return;
         }
         
-        // Accept both RFC-compliant CRLF and clients that send LF only.
+        // Accept both RFC-compliant CRLF and clients that send LF only
         std::string input = client.getInput();
         size_t pos;
         while ((pos = input.find('\n')) != std::string::npos)
@@ -309,7 +288,6 @@ void Server::readFromClient(Client& client)
 
 void Server::writeToClient(Client& client)
 {
-    // Implementazione per inviare dati pendenti al client
     if (client.hasOutput())
     {
         std::string output = client.getOutput();
@@ -317,9 +295,7 @@ void Server::writeToClient(Client& client)
         if (sent > 0)
             client.removeOutput(static_cast<std::size_t>(sent));
         else if (sent < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)
-        {
             removeClient(client.getFd());
-        }
     }
 }
 
@@ -344,10 +320,10 @@ void Server::removeClient(int fd)
             break;
         }
     }
-    rebuildPollSet();
+    buildPollSet();
 }
 
-void Server::rebuildPollSet()
+void Server::buildPollSet()
 {
     _pollSet.clear();
     
@@ -372,15 +348,10 @@ void Server::rebuildPollSet()
     }
 }
 
-void Server::setupPollSet()
-{
-    rebuildPollSet();
-}
-
 void Server::run()
 {
     _running = true;
-    setupPollSet();
+    buildPollSet();
     
     while (_running)
     {
@@ -392,13 +363,11 @@ void Server::run()
             break;
         }
         
-        // Controlla il socket del server
+        // server socket
         if (_pollSet[0].revents & POLLIN)
-        {
             acceptClients();
-        }
         
-        // Controlla i client
+        // clients
         for (std::size_t i = 1; i < _pollSet.size(); ++i)
         {
             if (_pollSet[i].revents & POLLIN)
@@ -424,7 +393,7 @@ void Server::run()
                 break;
             }
         }
-        rebuildPollSet();
+        buildPollSet();
     }
 }
 
@@ -461,16 +430,6 @@ Channel* Server::findChannel(const std::string& name)
     return NULL;
 }
 
-std::vector<Channel>& Server::getChannels()
-{
-    return _channels;
-}
-
-void Server::start()
-{
-    run();
-}
-
 void Server::stop()
 {
     _running = false;
@@ -481,9 +440,7 @@ void Server::stop()
     }
     for (std::deque<Client>::iterator it = _clients.begin();
          it != _clients.end(); ++it)
-    {
         close(it->getFd());
-    }
     _clients.clear();
     _channels.clear();
     _pollSet.clear();
@@ -493,3 +450,4 @@ int Server::getPort() const { return _port; }
 int Server::getSocket() const { return _socket; }
 const std::string& Server::getPassword() const { return _password; }
 const std::deque<Client>& Server::getClients() const { return _clients; }
+std::vector<Channel>& Server::getChannels() { return _channels; }
