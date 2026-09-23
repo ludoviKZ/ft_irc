@@ -322,7 +322,7 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 				limitStr = oss.str();
 				space2 = " ";
 			}
-			sendReply(client, ":localhost 324 " + client.getNickname() + " " + parameters[0] + " +" + ModFlags + space1 + channel->getKey()
+			sendReply(client, client.getNickname() + " " + parameters[0] + " +" + ModFlags + space1 + channel->getKey()
 				+ space2 + limitStr + "\r\n");
 			sendReply(client, ":localhost 329 " + client.getNickname() + " " + parameters[0] + " " + channel->getCreationTime() + "\r\n");
 			return;
