@@ -131,7 +131,11 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
     for (std::vector<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
     {
         if (*it != NULL && (*it)->getFd() == client.getFd())
+		{
+			sendReply(client, ":localhost 403 " + client.getNickname() + " " + parameters[0] +
+			" :Already in this channel\r\n");
             return;
+		}
     }
 
     channel->addClient(client);
@@ -444,9 +448,41 @@ static void handleWho(Server& server, Client& client, const std::vector<std::str
         sendReply(client, ":localhost 315 " + client.getNickname() + " * :End of /WHO list\r\n");
         return;
     }
+	if (parameters.size() > 1)
+    {
+        sendReply(client, ":localhost 461 " + client.getNickname() + " * :WHO: Too many parameters\r\n");
+        return;
+    }
 
-    // Placeholder for WHO channel/user listing logic.
-    // server.handleWhoCommand(&client, parameters);
+	if (parameters[0][0] == '*')
+	{
+
+	}
+	else
+	{
+
+		Channel *channel;
+		channel = server.findChannel(parameters[0]);
+		if (!channel)
+		{
+			Client *targetClient;
+			targetClient = findClientByNickname(server, parameters[0]);
+			if (!targetClient)
+			{
+				return;
+			}
+			else
+			{
+
+			}
+		}
+		else
+		{
+
+		}
+	}
+
+	//:server 352 <requester> <channel> <username> <host> <server> <nickname> <flags> <hopcount> <realname>
     sendReply(client, ":localhost 352 " + client.getNickname() + " " + parameters[0] + " " + client.getUsername() + " localhost localhost " + client.getNickname() + " H :0 realname\r\n");
     sendReply(client, ":localhost 315 " + client.getNickname() + " " + parameters[0] + " :End of /WHO list\r\n");
 }

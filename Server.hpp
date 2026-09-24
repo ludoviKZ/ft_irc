@@ -22,8 +22,7 @@ class Server
 public:
     Server(int port, const std::string& password);
     ~Server();
-    
-    void start();
+
     void run();
     void stop();
 
@@ -33,8 +32,8 @@ public:
     const std::string& getPassword() const;
     Client* findClient(int fileDescriptor);
     const std::deque<Client>& getClients() const;
-    Channel* findChannel(const std::string& name);/////////
-    std::vector<Channel>& getChannels();/////////////////
+    Channel* findChannel(const std::string& name);
+    std::vector<Channel>& getChannels();
 
     // Metodi per la gestione dei client
     void acceptClients();
@@ -54,9 +53,6 @@ private:
     void createServerSocket();
     void setupPollSet();
     void broadcastOtherChannelMembers(Channel* channel, Client* sender, const std::string& message);
-    void processCommand(Client* client, const std::string& command);
-    void handleJoinCommand(Client* client, const std::string& channelName);
-    void handlePrivMsgCommand(Client* client, const std::string& target, const std::string& message);
     Client* findClientByNickname(const std::string& nickname);
     
     int _port;

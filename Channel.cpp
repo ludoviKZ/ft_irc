@@ -149,13 +149,3 @@ bool Channel::hasClient(Client& client) const
     }
     return false;
 }
-
-// void Channel::broadcast(const std::string& message)
-// {
-//     for (std::vector<Client*>::const_iterator it = _clients.begin();
-//          it != _clients.end(); ++it)
-//     {
-//         if (*it)
-//             send((*it)->getFd(), message.c_str(), message.length(), 0);
-//     }
-// }
