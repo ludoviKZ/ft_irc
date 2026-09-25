@@ -124,9 +124,19 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
 
     if (channel->hasKey())
     {
-        sendReply(client, ":localhost 475 " + client.getNickname() + " " + channelName + " :Cannot join channel (+k)\r\n");
+        if (parameters.size() < 2 || parameters[1] != channel->getKey())
+        {
+            sendReply(client, ":localhost 475 " + client.getNickname() + " " + channelName + " :Cannot join channel (+k)\r\n");
+            return;
+        }
+    }
+
+    if (channel->hasUserLimit() && channel->getClientCount() >= channel->getUserLimit())
+    {
+        sendReply(client, ":localhost 471 " + client.getNickname() + " " + channelName + " :Cannot join channel (+l)\r\n");
         return;
     }
+
     const std::vector<Client*>& members = channel->getClients();
     for (std::vector<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
     {
