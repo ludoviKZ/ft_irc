@@ -48,6 +48,8 @@ public:
 	bool hasClient(Client& client) const;
 	bool isChannelOperator(Client& client) const;
 	bool isClientInvited(const Client& client) const;
+	void addInvitedClient(Client& client);
+	void removeInvitedClient(Client& client);
 
 	//void Channel::broadcast(const std::string& message);
 

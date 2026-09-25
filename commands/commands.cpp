@@ -598,6 +598,7 @@ void handleInvite(Server& server, Client& client, const std::vector<std::string>
         return;
     }
 
+	channel->addInvitedClient(*targetClient);
     channel->addClient(*targetClient);
     sendReply(*targetClient, ":" + client.getNickname() + "!" + client.getUsername() + "@localhost INVITE " + targetNick + " :" + channelName + "\r\n");
 }

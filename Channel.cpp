@@ -149,3 +149,21 @@ bool Channel::hasClient(Client& client) const
     }
     return false;
 }
+
+void Channel::addInvitedClient(Client& client)
+{
+    _invitedClients.push_back(&client);
+}
+
+void Channel::removeInvitedClient(Client& client)
+{
+    for (std::vector<Client*>::iterator it = _invitedClients.begin();
+         it != _invitedClients.end(); ++it)
+    {
+        if (*it == &client)
+        {
+            _invitedClients.erase(it);
+            return;
+        }
+    }
+}
