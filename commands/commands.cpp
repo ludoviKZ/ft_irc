@@ -443,24 +443,21 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 static void handleWho(Server& server, Client& client, const std::vector<std::string>& parameters)
 {
     (void)server;
-    if (parameters.empty())
-    {
-        sendReply(client, ":localhost 315 " + client.getNickname() + " * :End of /WHO list\r\n");
-        return;
-    }
 	if (parameters.size() > 1)
     {
         sendReply(client, ":localhost 461 " + client.getNickname() + " * :WHO: Too many parameters\r\n");
         return;
     }
 
-	if (parameters[0][0] == '*')
+	if (parameters.empty() || (!parameters.empty() && parameters[0] == "*"))
 	{
-
+			const std::deque<Client>& members = server.getClients();
+			for (std::deque<Client>::const_iterator it = members.begin(); it != members.end(); ++it)
+				sendReply(client, ":localhost 352 " + client.getNickname() + " " + parameters[0] + " " + it->getUsername()
+					+ " localhost localhost " + it->getNickname() + " H" + " 0\r\n");
 	}
 	else
 	{
-
 		Channel *channel;
 		channel = server.findChannel(parameters[0]);
 		if (!channel)
@@ -469,21 +466,26 @@ static void handleWho(Server& server, Client& client, const std::vector<std::str
 			targetClient = findClientByNickname(server, parameters[0]);
 			if (!targetClient)
 			{
+				sendReply(client, ":localhost 401 " + client.getNickname() + " " + parameters[0] + " :No such nick/channel\r\n");
 				return;
 			}
 			else
-			{
-
-			}
+				sendReply(client, ":localhost 352 " + targetClient->getNickname() + " " + parameters[0] + " "
+					+ targetClient->getUsername() + " localhost localhost " + targetClient->getNickname() + " H" + " 0\r\n");
 		}
 		else
 		{
-
+			const std::vector<Client*>& members = channel->getClients();
+			for (std::vector<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
+			{
+				std::string flag = "";
+				if (*it != NULL && channel->isChannelOperator(**it))
+					flag = "@";
+				sendReply(client, ":localhost 352 " + client.getNickname() + " " + parameters[0] + " " + (*it)->getUsername()
+					+ " localhost localhost " + (*it)->getNickname() + " H" + flag + " 0\r\n");
+			}
 		}
 	}
-
-	//:server 352 <requester> <channel> <username> <host> <server> <nickname> <flags> <hopcount> <realname>
-    sendReply(client, ":localhost 352 " + client.getNickname() + " " + parameters[0] + " " + client.getUsername() + " localhost localhost " + client.getNickname() + " H :0 realname\r\n");
     sendReply(client, ":localhost 315 " + client.getNickname() + " " + parameters[0] + " :End of /WHO list\r\n");
 }
 
