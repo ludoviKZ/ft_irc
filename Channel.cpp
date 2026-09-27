@@ -5,12 +5,12 @@
 #include <sys/socket.h>
 #include <cstring>
 
-Channel::Channel() : _userLimit(0), _inviteOnly(false), _topicRestricted(true)
+Channel::Channel() : _userLimit(0), _inviteOnly(false), _topicRestricted(false)
 {
 }
 
 Channel::Channel(const std::string& name) 
-    : _name(name), _userLimit(0), _inviteOnly(false), _topicRestricted(true)
+    : _name(name), _userLimit(0), _inviteOnly(false), _topicRestricted(false)
 {
     time_t now = time(NULL);
     std::ostringstream timestamp;

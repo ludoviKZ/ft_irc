@@ -180,6 +180,12 @@ static void handleTopic(Server& server, Client& client, const std::vector<std::s
         return;
     }
 
+	if (!channel->hasClient(client))
+	{
+		sendReply(client, ":localhost 442 " + client.getNickname() + " " + channel->getName() + " :You're not on that channel\r\n");
+		return;
+	}
+
     if (parameters.size() == 1)
     {
         if (channel->getTopic().empty())
@@ -253,8 +259,14 @@ static void handlePrivmsg(Server& server, Client& client, const std::vector<std:
     std::string fullMessage = ":" + client.getNickname() + "!" + client.getUsername() + "@localhost PRIVMSG " + target + " :" + message + "\r\n";
 
     Channel* channel = server.findChannel(target);
+	
     if (channel != NULL)
     {
+		if (!channel->hasClient(client))
+		{
+			sendReply(client, ":localhost 442 " + client.getNickname() + " " + channel->getName() + " :You're not on that channel\r\n");
+			return;
+		}
         const std::vector<Client*>& members = channel->getClients();
         for (std::vector<Client*>::const_iterator it = members.begin(); it != members.end(); ++it)
         {
@@ -314,6 +326,11 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 		Channel *channel = server.findChannel(parameters[0]);
         if (channel != NULL)
 		{
+			if (!channel->hasClient(client))
+			{
+				sendReply(client, ":localhost 442 " + client.getNickname() + " " + channel->getName() + " :You're not on that channel\r\n");
+				return;
+			}
 			std::string ModFlags = "";
 			if (channel->isInviteOnly())
 				ModFlags += "i";
@@ -544,7 +561,7 @@ void handleKick(Server& server, Client& client, const std::vector<std::string>& 
 
     if (!channel->hasClient(client))
     {
-        sendReply(client, ":localhost 442 " + client.getNickname() + " :You are not in " + channelName + " channel\r\n");
+        sendReply(client, ":localhost 442 " + client.getNickname() + " " + channelName + " :You're not on that channel\r\n");
         return;
     }
 
@@ -563,8 +580,7 @@ void handleKick(Server& server, Client& client, const std::vector<std::string>& 
 
 	if (!channel->hasClient(*targetClient))
     {
-        sendReply(client, ":localhost 441 " + client.getNickname() + " " + targetNick + " :No such user in "
-			+ channelName + " channel\r\n");
+        sendReply(client, ":localhost 442 " + client.getNickname() + " " + channelName + " :You're not on that channel\r\n");
         return;
     }
 
@@ -595,6 +611,7 @@ void handleInvite(Server& server, Client& client, const std::vector<std::string>
         return;
     }
 
+	
     Client* targetClient = findClientByNickname(server, targetNick);
     if (!targetClient)
     {
@@ -609,7 +626,6 @@ void handleInvite(Server& server, Client& client, const std::vector<std::string>
     }
 
 	channel->addInvitedClient(*targetClient);
-    channel->addClient(*targetClient);
     sendReply(*targetClient, ":" + client.getNickname() + "!" + client.getUsername() + "@localhost INVITE " + targetNick + " :" + channelName + "\r\n");
 }
 
@@ -644,7 +660,7 @@ void handleRemoveInvite(Server& server, Client& client, const std::vector<std::s
         return;
     }
 
-    channel->removeClient(*targetClient);
+    channel->removeInvitedClient(*targetClient);
     sendReply(*targetClient, ":" + client.getNickname() + "!" + client.getUsername() + "@localhost REMOVEINVITE " + targetNick + " :" + channelName + "\r\n");
 }
 
