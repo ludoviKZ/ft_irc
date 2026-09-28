@@ -99,6 +99,11 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
         sendReply(client, ":localhost 461 " + client.getNickname() + " JOIN :Not enough parameters\r\n");
         return;
     }
+    if (parameters.size() > 1)
+    {
+        sendReply(client, ":localhost 461 " + client.getNickname() + " JOIN :Too many parameters\r\n");
+        return;
+    }
 	if (parameters[0][0] != '#')
 	{
 		sendReply(client, ":localhost 403 " + client.getNickname() + " " + parameters[0] +
@@ -142,7 +147,7 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
     {
         if (*it != NULL && (*it)->getFd() == client.getFd())
 		{
-			sendReply(client, ":localhost 403 " + client.getNickname() + " " + parameters[0] +
+			sendReply(client, ":localhost 443 " + client.getNickname() + " " + parameters[0] +
 			" :Already in this channel\r\n");
             return;
 		}
