@@ -389,15 +389,26 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 		return;
 	}
 
-    Client *targetClient;
-	if (parameters[1] == "+i")
-		channel->setInviteOnly(true);
-	else if (parameters[1] == "-i")
-		channel->setInviteOnly(false);
-	else if (parameters[1] == "+t")
-		channel->setTopicRestricted(true);
-	else if (parameters[1] == "-t")
-		channel->setTopicRestricted(false);
+	if (parameters[1] == "+i" || parameters[1] == "-i" || parameters[1] == "+t" || parameters[1] == "-t" || parameters[1] == "-l" || parameters[1] == "-k")
+	{
+		if (parameters.size() > 2)
+		{
+			sendReply(client, ":localhost 461 " + clientNameOrStar(client) + " MODE :Too many parameters\r\n");
+			return;
+		}
+		if (parameters[1] == "+i")
+			channel->setInviteOnly(true);
+		else if (parameters[1] == "-i")
+			channel->setInviteOnly(false);
+		else if (parameters[1] == "+t")
+			channel->setTopicRestricted(true);
+		else if (parameters[1] == "-t")
+			channel->setTopicRestricted(false);
+		else if (parameters[1] == "-l")
+			channel->setUserLimit(client, 0);
+		else if (parameters[1] == "-k")
+			channel->setKey("");
+	}
 	else if (parameters[1] == "+k")
 	{
 		if (parameters.size() < 3)
@@ -405,17 +416,12 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
        		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE +k :Password parameter required\r\n");
         	return;
     	}
-		channel->setKey(parameters[2]);
-	}
-	else if (parameters[1] == "-k")
-	{
-		if (parameters.size() < 3)
+		if (parameters.size() > 3)
 		{
-       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE -k :Password parameter required\r\n");
-        	return;
-    	}
-		if (channel->getKey() == parameters[2])
-			channel->setKey("");
+			sendReply(client, ":localhost 461 " + clientNameOrStar(client) + " MODE :Too many parameters\r\n");
+			return;
+		}
+		channel->setKey(parameters[2]);
 	}
 	else if (parameters[1] == "+o")
 	{
@@ -424,6 +430,12 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
        		sendReply(client, ":localhost 401 " + client.getNickname() + " MODE +o :User parameter required\r\n");
         	return;
     	}
+		if (parameters.size() > 3)
+		{
+			sendReply(client, ":localhost 461 " + clientNameOrStar(client) + " MODE :Too many parameters\r\n");
+			return;
+		}
+		Client *targetClient;
 		targetClient = findClientByNickname(server, parameters[2]);
 		if (!targetClient)
 		{
@@ -439,6 +451,12 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
        		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE -o :User parameter required\r\n");
         	return;
     	}
+		if (parameters.size() > 3)
+		{
+			sendReply(client, ":localhost 461 " + clientNameOrStar(client) + " MODE :Too many parameters\r\n");
+			return;
+		}
+		Client *targetClient;
 		targetClient = findClientByNickname(server, parameters[2]);
 		if (!targetClient)
 		{
@@ -454,6 +472,11 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
        		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE +l :User limit value parameter required\r\n");
         	return;
     	}
+		if (parameters.size() > 3)
+		{
+			sendReply(client, ":localhost 461 " + clientNameOrStar(client) + " MODE :Too many parameters\r\n");
+			return;
+		}
         char *end = NULL;
         long limit = std::strtol(parameters[2].c_str(), &end, 10);
         if (end == parameters[2].c_str() || *end != '\0' || limit < 1)
@@ -463,8 +486,8 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
         }
 		channel->setUserLimit(client, static_cast<int>(limit));
 	}
-	else if (parameters[1] == "-l")
-		channel->setUserLimit(client, 0);
+	else
+		sendReply(client, ":localhost 403 " + client.getNickname() + " :Unknown MODE parameter\r\n");
 }
 
 static void handleWho(Server& server, Client& client, const std::vector<std::string>& parameters)
