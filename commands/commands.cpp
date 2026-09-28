@@ -480,7 +480,7 @@ static void handleWho(Server& server, Client& client, const std::vector<std::str
 	{
 			const std::deque<Client>& members = server.getClients();
 			for (std::deque<Client>::const_iterator it = members.begin(); it != members.end(); ++it)
-				sendReply(client, ":localhost 352 " + client.getNickname() + " " + parameters[0] + " " + it->getUsername()
+				sendReply(client, ":localhost 352 " + client.getNickname() + " " + it->getUsername()
 					+ " localhost localhost " + it->getNickname() + " H" + " 0\r\n");
 	}
 	else
@@ -513,7 +513,10 @@ static void handleWho(Server& server, Client& client, const std::vector<std::str
 			}
 		}
 	}
-    sendReply(client, ":localhost 315 " + client.getNickname() + " " + parameters[0] + " :End of /WHO list\r\n");
+	if (parameters.empty() || (!parameters.empty() && parameters[0] == "*"))
+		sendReply(client, ":localhost 315 " + client.getNickname() + " :End of /WHO list\r\n");
+	else
+    	sendReply(client, ":localhost 315 " + client.getNickname() + " " + parameters[0] + " :End of /WHO list\r\n");
 }
 
 static void handleUserhost(Server& server, Client& client, const std::vector<std::string>& parameters)
