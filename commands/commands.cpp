@@ -99,11 +99,6 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
         sendReply(client, ":localhost 461 " + client.getNickname() + " JOIN :Not enough parameters\r\n");
         return;
     }
-    if (parameters.size() > 1)
-    {
-        sendReply(client, ":localhost 461 " + client.getNickname() + " JOIN :Too many parameters\r\n");
-        return;
-    }
 	if (parameters[0][0] != '#')
 	{
 		sendReply(client, ":localhost 403 " + client.getNickname() + " " + parameters[0] +
@@ -121,6 +116,12 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
         channel->addOperator(client);
     }
 
+    if (parameters.size() > 1 && !channel->hasKey())
+    {
+        sendReply(client, ":localhost 461 " + client.getNickname() + " JOIN :Too many parameters\r\n");
+        return;
+    }
+
     if (channel->isInviteOnly() && channel->isClientInvited(client) == false)
     {
         sendReply(client, ":localhost 473 " + client.getNickname() + " " + channelName + " :Cannot join channel (+i)\r\n");
@@ -129,7 +130,7 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
 
     if (channel->hasKey())
     {
-        if (parameters.size() < 2 || parameters[1] != channel->getKey())
+        if (parameters.size() < 2 || parameters.size() > 3 || parameters[1] != channel->getKey())
         {
             sendReply(client, ":localhost 475 " + client.getNickname() + " " + channelName + " :Cannot join channel (+k)\r\n");
             return;
