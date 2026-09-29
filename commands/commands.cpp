@@ -118,7 +118,7 @@ static void handleJoin(Server& server, Client& client, const std::vector<std::st
 
     if (parameters.size() > 1 && !channel->hasKey())
     {
-        sendReply(client, /*":localhost 461 " +*/ client.getNickname() + " JOIN :Too many parameters\r\n");
+        sendReply(client, ":localhost 407 " + client.getNickname() + " JOIN :Too many parameters\r\n");
         return;
     }
 
@@ -174,7 +174,7 @@ static void handleTopic(Server& server, Client& client, const std::vector<std::s
     }
 	if (parameters.size() > 2)
     {
-        sendReply(client, /*":localhost 461 " +*/ client.getNickname() + " TOPIC :Too many parameters\r\n");
+        sendReply(client, ":localhost 407 " + client.getNickname() + " TOPIC :Too many parameters\r\n");
         return;
     }
 
@@ -404,7 +404,7 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 	{
 		if (parameters.size() > 2)
 		{
-			sendReply(client, /*":localhost 461 " +*/ clientNameOrStar(client) + " MODE :Too many parameters\r\n");
+			sendReply(client, ":localhost 407 " + clientNameOrStar(client) + " MODE :Too many parameters\r\n");
 			return;
 		}
 		if (parameters[1] == "+i")
@@ -429,7 +429,7 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
     	}
 		if (parameters.size() > 3)
 		{
-			sendReply(client, /*":localhost 461 " +*/ clientNameOrStar(client) + " MODE :Too many parameters\r\n");
+			sendReply(client, ":localhost 407 " + clientNameOrStar(client) + " MODE :Too many parameters\r\n");
 			return;
 		}
 		channel->setKey(parameters[2]);
@@ -443,7 +443,7 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
     	}
 		if (parameters.size() > 3)
 		{
-			sendReply(client, /*":localhost 461 " +*/ clientNameOrStar(client) + " MODE :Too many parameters\r\n");
+			sendReply(client, ":localhost 407 " + clientNameOrStar(client) + " MODE :Too many parameters\r\n");
 			return;
 		}
 		Client *targetClient;
@@ -465,7 +465,7 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
     	}
 		if (parameters.size() > 3)
 		{
-			sendReply(client, /*":localhost 461 " +*/ clientNameOrStar(client) + " MODE :Too many parameters\r\n");
+			sendReply(client, ":localhost 407 " + clientNameOrStar(client) + " MODE :Too many parameters\r\n");
 			return;
 		}
 		Client *targetClient;
@@ -487,7 +487,7 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
     	}
 		if (parameters.size() > 3)
 		{
-			sendReply(client, /*":localhost 461 " +*/ clientNameOrStar(client) + " MODE :Too many parameters\r\n");
+			sendReply(client, ":localhost 407 " + clientNameOrStar(client) + " MODE :Too many parameters\r\n");
 			return;
 		}
         char *end = NULL;
@@ -508,7 +508,7 @@ static void handleWho(Server& server, Client& client, const std::vector<std::str
     (void)server;
 	if (parameters.size() > 1)
     {
-        sendReply(client, /*":localhost 461 " +*/ client.getNickname() + " * :WHO: Too many parameters\r\n");
+        sendReply(client, ":localhost 407 " + client.getNickname() + " * :WHO: Too many parameters\r\n");
         return;
     }
 
