@@ -229,6 +229,11 @@ static void handlePart(Server& server, Client& client, const std::vector<std::st
         return;
     }
 
+	if (!channel->hasClient(client))
+	{
+		sendReply(client, ":localhost 442 " + client.getNickname() + " " + channel->getName() + " :You already were not on that channel\r\n");
+		return;
+	}
     channel->removeClient(client);
     sendReply(client, ":" + client.getNickname() + "!" + client.getUsername() + "@localhost PART " + channelName + "\r\n");
     if (channel->getClientCount() == 0)
@@ -442,12 +447,13 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 		}
 		Client *targetClient;
 		targetClient = findClientByNickname(server, parameters[2]);
-		if (!targetClient)
+		if (!targetClient || !channel->hasClient(*targetClient))
 		{
-       		sendReply(client, ":localhost 401 " + client.getNickname() + " MODE +o :No user with this Nick\r\n");
-        	return;
-    	}
+			sendReply(client, ":localhost 442 " + client.getNickname() + " " + channel->getName() + " MODE +o :No such user on that channel\r\n");
+			return;
+		}
 		channel->addOperator(*targetClient);
+		sendReply(client, ":localhost MODE " + channel->getName() + " +o " + targetClient->getNickname() + "\r\n");
 	}
 	else if (parameters[1] == "-o")
 	{
@@ -463,12 +469,13 @@ static void handleMode(Server& server, Client& client, const std::vector<std::st
 		}
 		Client *targetClient;
 		targetClient = findClientByNickname(server, parameters[2]);
-		if (!targetClient)
+		if (!targetClient || !channel->hasClient(*targetClient))
 		{
-       		sendReply(client, ":localhost 461 " + client.getNickname() + " MODE -o :No user with this Nick\r\n");
-        	return;
-    	}
+			sendReply(client, ":localhost 442 " + client.getNickname() + " " + channel->getName() + " MODE -o :No such user on that channel\r\n");
+			return;
+		}
 		channel->removeOperator(*targetClient);
+		sendReply(client, ":localhost MODE " + channel->getName() + " -o " + targetClient->getNickname() + "\r\n");
 	}
 	else if (parameters[1] == "+l")
 	{
@@ -508,8 +515,8 @@ static void handleWho(Server& server, Client& client, const std::vector<std::str
 	{
 			const std::deque<Client>& members = server.getClients();
 			for (std::deque<Client>::const_iterator it = members.begin(); it != members.end(); ++it)
-				sendReply(client, ":localhost 352 " + client.getNickname() + " " + it->getUsername()
-					+ " localhost localhost " + it->getNickname() + " H" + " 0\r\n");
+				sendReply(client, ":localhost 352 " + client.getNickname() + " * "
+    				+ it->getUsername() + " localhost localhost " + it->getNickname() + " H :0\r\n");
 	}
 	else
 	{
@@ -526,7 +533,7 @@ static void handleWho(Server& server, Client& client, const std::vector<std::str
 			}
 			else
 				sendReply(client, ":localhost 352 " + targetClient->getNickname() + " " + parameters[0] + " "
-					+ targetClient->getUsername() + " localhost localhost " + targetClient->getNickname() + " H" + " 0\r\n");
+					+ targetClient->getUsername() + " localhost localhost " + targetClient->getNickname() + " H" + " :0\r\n");
 		}
 		else
 		{
@@ -537,7 +544,7 @@ static void handleWho(Server& server, Client& client, const std::vector<std::str
 				if (*it != NULL && channel->isChannelOperator(**it))
 					flag = "@";
 				sendReply(client, ":localhost 352 " + client.getNickname() + " " + parameters[0] + " " + (*it)->getUsername()
-					+ " localhost localhost " + (*it)->getNickname() + " H" + flag + " 0\r\n");
+					+ " localhost localhost " + (*it)->getNickname() + " H" + flag + " :0\r\n");
 			}
 		}
 	}
@@ -650,7 +657,7 @@ void handleInvite(Server& server, Client& client, const std::vector<std::string>
         return;
     }
 
-    if (!channel->isChannelOperator(client))
+    if (/*channel->isInviteOnly() && [nei veri irc e' cosi ma Subject pare non volerlo]*/!channel->isChannelOperator(client))
     {
         sendReply(client, ":localhost 482 " + client.getNickname() + " " + channelName + " :You're not channel operator\r\n");
         return;
